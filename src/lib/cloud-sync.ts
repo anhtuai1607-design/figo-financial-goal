@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFiGo } from "./store";
 import type { ChatSession } from "./types";
 
-type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash" | "assistantSessions">;
+type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash" | "assistantSessions" | "customCategories">;
 
 function snapshot(): Snapshot {
   const s = useFiGo.getState();
-  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash, assistantSessions: s.assistantSessions };
+  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash, assistantSessions: s.assistantSessions, customCategories: s.customCategories };
 }
 
 const time = (s: string) => new Date(s).getTime();
@@ -60,6 +60,7 @@ export function useCloudSync(userId: string) {
         goals: saved.goals ?? [],
         pinHash: saved.pinHash ?? null,
         assistantSessions: saved.assistantSessions ?? [],
+        customCategories: saved.customCategories ?? [],
       });
       applying = false;
     };
@@ -97,6 +98,7 @@ export function useCloudSync(userId: string) {
                 goals: mergeById(remote.goals, local.goals),
                 pinHash: remote.pinHash ?? local.pinHash,
               assistantSessions: mergeSessions(remote.assistantSessions, local.assistantSessions),
+              customCategories: mergeById(remote.customCategories, local.customCategories),
               },
               local.userName,
             );

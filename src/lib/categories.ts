@@ -45,7 +45,7 @@ import {
   Droplets,
   type LucideIcon,
 } from "lucide-react";
-import type { TransactionType } from "./types";
+import type { CustomCategory, TransactionType } from "./types";
 
 export interface Category {
   id: string;
@@ -106,6 +106,19 @@ export const CATEGORIES: Category[] = [
   { id: "transfer", name: "Chuyển khoản", icon: ArrowLeftRight, type: "transfer", hue: 240 },
 ];
 
+export const ICON_OPTIONS: Record<string, LucideIcon> = {
+  utensils: Utensils, coffee: Coffee, home: Home, bag: ShoppingBag, cart: ShoppingCart, store: Store, shirt: Shirt, heart: HeartPulse,
+  school: GraduationCap, book: BookOpen, bus: Bus, car: Car, fuel: Fuel, film: Clapperboard, phone: Smartphone, laptop: Laptop,
+  gift: Gift, paw: PawPrint, baby: Baby, plane: Plane, wrench: Wrench, piggy: PiggyBank, work: Briefcase, trend: TrendingUp,
+  dumbbell: Dumbbell, wifi: Wifi, tv: Tv, water: Droplets, coins: HandCoins, star: Sparkles,
+};
+export const HUE_OPTIONS = [15, 35, 60, 100, 150, 190, 220, 260, 300, 340];
+
+let custom: Category[] = [];
+export function applyCustomCategories(list: CustomCategory[]) {
+  custom = list.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: ICON_OPTIONS[c.icon] ?? Sparkles, hue: c.hue }));
+}
+
 const map = new Map(CATEGORIES.map((c) => [c.id, c]));
 const fallbackCategory: Category = {
   id: "khac_chi",
@@ -116,11 +129,11 @@ const fallbackCategory: Category = {
 };
 
 export function getCategory(id: string): Category {
-  return map.get(id) ?? fallbackCategory;
+  return map.get(id) ?? custom.find((c) => c.id === id) ?? fallbackCategory;
 }
 
 export function categoriesByType(type: TransactionType) {
-  return CATEGORIES.filter((c) => c.type === type);
+  return [...CATEGORIES, ...custom].filter((c) => c.type === type);
 }
 
 export function categoryColor(id: string, alpha = 1) {

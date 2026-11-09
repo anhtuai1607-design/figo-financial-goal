@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Account, Bill, Budget, ChatSession, Goal, Transaction } from "./types";
+import type { Account, Bill, Budget, ChatSession, CustomCategory, Goal, Transaction } from "./types";
+import { applyCustomCategories } from "./categories";
 import { uid, toVnd } from "./format";
 
 interface FiGoState {
@@ -14,6 +15,8 @@ interface FiGoState {
   pinHash: string | null;
   assistantSessions: ChatSession[];
   setAssistantSessions: (list: ChatSession[]) => void;
+  customCategories: CustomCategory[];
+  setCustomCats: (list: CustomCategory[]) => void;
 
   setPin: (hash: string | null) => void;
   ensureWallet: () => string;
@@ -47,7 +50,7 @@ interface FiGoState {
 
 export const WALLET_ID = "figo_wallet";
 
-const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [], assistantSessions: [] };
+const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [], assistantSessions: [], customCategories: [] };
 
 export const useFiGo = create<FiGoState>()(
   persist(
@@ -62,6 +65,8 @@ export const useFiGo = create<FiGoState>()(
       goals: [],
       assistantSessions: [],
       setAssistantSessions: (list) => set({ assistantSessions: list.slice(0, 30) }),
+      customCategories: [],
+      setCustomCats: (list) => set({ customCategories: list }),
       pinHash: null,
 
       setPin: (pinHash) => set({ pinHash }),
@@ -168,7 +173,17 @@ export const useFiGo = create<FiGoState>()(
         goals: s.goals,
         pinHash: s.pinHash,
         assistantSessions: s.assistantSessions,
+        customCategories: s.customCategories,
       }),
     },
   ),
 );
+
+// Giữ danh sách danh mục tự tạo luôn khớp với kho dữ liệu (kể cả khi dữ liệu mới tải từ cloud về).
+let lastCustom: unknown;
+useFiGo.subscribe((s) => {
+  if (s.customCategories !== lastCustom) {
+    lastCustom = s.customCategories;
+    applyCustomCategories(s.customCategories);
+  }
+});

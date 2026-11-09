@@ -57,3 +57,4 @@ export interface Goal {
 
 export interface ChatMsg { role: "user" | "assistant"; content: string }
 export interface ChatSession { id: string; title: string; createdAt: string; updatedAt: string; messages: ChatMsg[] }
+export interface CustomCategory { id: string; name: string; type: TransactionType; icon: string; hue: number }
