@@ -14,11 +14,13 @@ import { useFiGo } from "@/lib/store";
 import type { TransactionType } from "@/lib/types";
 import { useUI } from "@/lib/ui-store";
 
-const nowLocal = () => {
-  const d = new Date();
+// Đổi một thời điểm sang chuỗi "YYYY-MM-DDTHH:mm" theo GIỜ ĐỊA PHƯƠNG của máy (ô chọn ngày giờ cần dạng này).
+const toLocalInput = (value: Date | string) => {
+  const d = new Date(value);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 };
+const nowLocal = () => toLocalInput(new Date());
 
 async function compressImage(file: File) {
   const url = URL.createObjectURL(file);
@@ -70,7 +72,7 @@ export function TransactionSheet() {
     setCategoryId(editing?.categoryId ?? categoriesByType(nextType)[0]?.id ?? "an_uong");
     setAccountId(editing?.accountId ?? accounts[0]?.id ?? "");
     setToAccountId(editing?.toAccountId ?? accounts[1]?.id ?? accounts[0]?.id ?? "");
-    setDate(editing ? new Date(editing.date).toISOString().slice(0, 16) : nowLocal());
+    setDate(editing ? toLocalInput(editing.date) : nowLocal());
     setNote(editing?.note ?? "");
     setReceipt(editing?.receipt);
   }, [open, editing, preset, accounts]);
