@@ -49,15 +49,6 @@ function loadSessions(): ChatSession[] {
   }
 }
 
-function saveSessions(sessions: ChatSession[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  } catch {
-    // ignore
-  }
-}
-
 function useFinanceContext() {
   const s = useFiGo();
   return () => {
@@ -88,7 +79,9 @@ function useFinanceContext() {
 function AssistantPage() {
   const ask = useServerFn(askAssistant);
   const buildContext = useFinanceContext();
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const sessions = useFiGo((s) => s.assistantSessions);
+  const setSessions = useFiGo((s) => s.setAssistantSessions);
+  const started = useRef(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -98,13 +91,29 @@ function AssistantPage() {
 
   // Khởi tạo đọc lịch sử từ localStorage
   useEffect(() => {
-    const list = loadSessions();
-    setSessions(list);
+    if (started.current) return;
+    started.current = true;
+    // Chuyển lịch sử cũ (lưu riêng trên máy này) lên cloud một lần.
+    const old = loadSessions();
+    let list = sessions;
+    if (old.length > 0) {
+      const ids = new Set(sessions.map((x) => x.id));
+      list = [...sessions, ...old.filter((x) => !ids.has(x.id))].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      setSessions(list);
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* bỏ qua */ }
+    }
     if (list.length > 0) {
       setCurrentId(list[0].id);
       setMsgs(list[0].messages);
     }
   }, []);
+
+  // Khi thiết bị khác thêm tin nhắn vào cuộc trò chuyện đang mở, cập nhật theo.
+  useEffect(() => {
+    if (busy || !currentId) return;
+    const cur = sessions.find((x) => x.id === currentId);
+    if (cur && cur.messages.length !== msgs.length) setMsgs(cur.messages);
+  }, [sessions, busy, currentId]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
@@ -127,7 +136,6 @@ function AssistantPage() {
     e.stopPropagation();
     const updated = sessions.filter((s) => s.id !== id);
     setSessions(updated);
-    saveSessions(updated);
     toast.success("Đã xoá cuộc trò chuyện.");
     if (currentId === id) {
       if (updated.length > 0) {
@@ -179,7 +187,6 @@ function AssistantPage() {
         }
 
         setSessions(updatedList);
-        saveSessions(updatedList);
       }
     } catch {
       toast.error("Không kết nối được trợ lý AI.");

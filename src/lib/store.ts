@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Account, Bill, Budget, Goal, Transaction } from "./types";
+import type { Account, Bill, Budget, ChatSession, Goal, Transaction } from "./types";
 import { uid, toVnd } from "./format";
 
 interface FiGoState {
@@ -12,6 +12,8 @@ interface FiGoState {
   bills: Bill[];
   goals: Goal[];
   pinHash: string | null;
+  assistantSessions: ChatSession[];
+  setAssistantSessions: (list: ChatSession[]) => void;
 
   setPin: (hash: string | null) => void;
   ensureWallet: () => string;
@@ -45,7 +47,7 @@ interface FiGoState {
 
 export const WALLET_ID = "figo_wallet";
 
-const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [] };
+const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [], assistantSessions: [] };
 
 export const useFiGo = create<FiGoState>()(
   persist(
@@ -58,6 +60,8 @@ export const useFiGo = create<FiGoState>()(
       budgets: [],
       bills: [],
       goals: [],
+      assistantSessions: [],
+      setAssistantSessions: (list) => set({ assistantSessions: list.slice(0, 30) }),
       pinHash: null,
 
       setPin: (pinHash) => set({ pinHash }),
@@ -163,6 +167,7 @@ export const useFiGo = create<FiGoState>()(
         bills: s.bills,
         goals: s.goals,
         pinHash: s.pinHash,
+        assistantSessions: s.assistantSessions,
       }),
     },
   ),

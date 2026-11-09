@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFiGo } from "./store";
+import type { ChatSession } from "./types";
 
-type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash">;
+type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash" | "assistantSessions">;
 
 function snapshot(): Snapshot {
   const s = useFiGo.getState();
-  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash };
+  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash, assistantSessions: s.assistantSessions };
 }
 
 const time = (s: string) => new Date(s).getTime();
@@ -19,6 +20,16 @@ function mergeById<T extends { id: string }>(remote: T[] = [], local: T[] = []):
 
 // Cứ mỗi vài giây, web hỏi cloud một câu rất nhẹ ("có bản mới không?").
 // Chỉ khi có bản mới mới tải đầy đủ về.
+/** Gộp lịch sử chat: cuộc trò chuyện trùng id thì giữ bản mới hơn. */
+function mergeSessions(remote: ChatSession[] = [], local: ChatSession[] = []): ChatSession[] {
+  const map = new Map<string, ChatSession>();
+  for (const s of [...remote, ...local]) {
+    const cur = map.get(s.id);
+    if (!cur || s.updatedAt > cur.updatedAt) map.set(s.id, s);
+  }
+  return [...map.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
 const CHECK_EVERY_MS = 3000;
 
 export function useCloudSync(userId: string) {
@@ -48,6 +59,7 @@ export function useCloudSync(userId: string) {
         bills: saved.bills ?? [],
         goals: saved.goals ?? [],
         pinHash: saved.pinHash ?? null,
+        assistantSessions: saved.assistantSessions ?? [],
       });
       applying = false;
     };
@@ -84,6 +96,7 @@ export function useCloudSync(userId: string) {
                 bills: mergeById(remote.bills, local.bills),
                 goals: mergeById(remote.goals, local.goals),
                 pinHash: remote.pinHash ?? local.pinHash,
+              assistantSessions: mergeSessions(remote.assistantSessions, local.assistantSessions),
               },
               local.userName,
             );

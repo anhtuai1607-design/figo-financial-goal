@@ -54,3 +54,6 @@ export interface Goal {
   accountId?: string;
   createdAt: string;
 }
+
+export interface ChatMsg { role: "user" | "assistant"; content: string }
+export interface ChatSession { id: string; title: string; createdAt: string; updatedAt: string; messages: ChatMsg[] }

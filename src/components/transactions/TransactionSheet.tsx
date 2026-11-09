@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { categoriesByType } from "@/lib/categories";
-import { activeBudgets, budgetProgress } from "@/lib/finance";
-import { formatVndInput, monthKey, parseVndInput } from "@/lib/format";
+import { accountBalance, activeBudgets, budgetProgress } from "@/lib/finance";
+import { formatVnd, formatVndInput, monthKey, parseVndInput } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
 import type { TransactionType } from "@/lib/types";
 import { useUI } from "@/lib/ui-store";
@@ -113,6 +113,18 @@ export function TransactionSheet() {
       toast.error("Tài khoản nhận phải khác tài khoản nguồn.");
       return;
     }
+    if (type === "expense" || type === "transfer") {
+      const acc = accounts.find((a) => a.id === accountId);
+      if (acc) {
+        // Khi sửa giao dịch cũ, không tính giao dịch đó vào số dư hiện có.
+        const others = editing ? txs.filter((t) => t.id !== editing.id) : txs;
+        const balance = accountBalance(acc, others);
+        if (value > balance) {
+          toast.error(`Số dư ${acc.name} không đủ: còn ${formatVnd(balance)}, không thể ${type === "expense" ? "chi" : "chuyển"} ${formatVnd(value)}.`);
+          return;
+        }
+      }
+    }
     const cleanNote = note.trim();
     const data = { type, amount: value, categoryId: type === "transfer" ? "transfer" : categoryId, accountId, ...(type === "transfer" && { toAccountId }), date: new Date(date).toISOString(), ...(cleanNote && { note: cleanNote }), ...(receipt && { receipt }) };
     if (editing) {
@@ -137,7 +149,7 @@ export function TransactionSheet() {
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
       <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl sm:max-w-xl">
-        <DialogHeader><DialogTitle>{editing ? "Sửa giao dịch" : "Ghi thu chi"}</DialogTitle><DialogDescription>Ghi sổ tài chính cá nhân · Không chuyển tiền qua ngân hàng.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Sửa giao dịch" : "Ghi thu chi"}</DialogTitle><DialogDescription className="sr-only">Nhập thông tin giao dịch</DialogDescription></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
             {([ ["expense", "Chi"], ["income", "Thu"], ["transfer", "Chuyển quỹ"] ] as const).map(([value, label]) => <Button key={value} type="button" variant={type === value ? "default" : "ghost"} onClick={() => changeType(value)}>{label}</Button>)}
