@@ -51,6 +51,7 @@ export interface Goal {
   saved: number;
   deadline: string; // ISO date
   emoji: string;
+  image?: string | undefined; // ảnh ước mơ (data URL)
   accountId?: string;
   createdAt: string;
 }

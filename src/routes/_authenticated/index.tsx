@@ -6,6 +6,7 @@ import { ArrowDownLeft, ArrowRight, ArrowUpRight, Lightbulb, Plus, Sparkles, Cal
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, TransactionRow, metaFor } from "@/components/finance/Common";
+import { AccountCard } from "@/components/finance/AccountCard";
 import { TransactionDetail } from "@/components/transactions/TransactionDetail";
 import { type TrendRange, accountBalance, buildInsights, categoryBreakdown, monthTotals, totalBalance, trendSeries } from "@/lib/finance";
 import { formatVnd, monthLabel, monthKey } from "@/lib/format";
@@ -89,12 +90,7 @@ function Dashboard() {
       ) : (
         <div className="-mx-4 mb-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
           {accounts.map((account, i) => (
-            <motion.div key={account.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="ios-card w-56 shrink-0 snap-start rounded-2xl p-4">
-              <div className="flex items-center justify-between"><span className="size-2.5 rounded-full" style={{ background: `var(--chart-${account.color})` }} /><span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{ACC_LABEL[account.type]}</span></div>
-              <p className="mt-3 truncate text-sm font-medium text-muted-foreground">{account.name}</p>
-              <p className="mt-0.5 truncate text-lg font-extrabold tabular">{formatVnd(accountBalance(account, txs))}</p>
-              {account.accountNumber && <p className="mt-1 text-[11px] text-muted-foreground">•••• {account.accountNumber.slice(-4)}</p>}
-            </motion.div>
+            <motion.div key={account.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="shrink-0 snap-start"><AccountCard account={account} balance={accountBalance(account, txs)} /></motion.div>
           ))}
         </div>
       )}
