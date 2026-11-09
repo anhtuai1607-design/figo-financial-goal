@@ -17,12 +17,10 @@ function mergeById<T extends { id: string }>(remote: T[] = [], local: T[] = []):
   return [...remote, ...local.filter((x) => !ids.has(x.id))];
 }
 
-/**
- * Tải dữ liệu của người dùng từ cloud và lưu lại mỗi khi có thay đổi.
- * Bản này còn:
- *  - tự tải lại dữ liệu mới khi mở lại tab/ứng dụng và mỗi 20 giây (để máy tính và điện thoại thấy nhau),
- *  - không ghi đè dữ liệu mới của thiết bị khác bằng dữ liệu cũ (gộp lại thay vì xoá).
- */
+// Cứ mỗi vài giây, web hỏi cloud một câu rất nhẹ ("có bản mới không?").
+// Chỉ khi có bản mới mới tải đầy đủ về.
+const CHECK_EVERY_MS = 3000;
+
 export function useCloudSync(userId: string) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +33,10 @@ export function useCloudSync(userId: string) {
     let lastName = "";
     let remoteStamp = ""; // updated_at của phiên bản cloud mà máy này đã tải/ghi gần nhất
     let applying = false; // đang áp dữ liệu từ cloud -> không ghi ngược lại
-    let dirty = false; // có thay đổi trên máy chưa kịp lưu
+    let dirty = false; // có thay đổi trên máy chưa lưu thành công
+    let timerPending = false; // đã hẹn lưu nhưng chưa đến giờ
+    let saving = false; // đang lưu
+    let ticking = false; // đang kiểm tra bản mới
 
     const applyToStore = (saved: Partial<Snapshot>, fallbackName: string) => {
       applying = true;
@@ -51,11 +52,11 @@ export function useCloudSync(userId: string) {
       applying = false;
     };
 
-    /** Lấy bản mới nhất từ cloud nếu khác bản máy này đang giữ. */
+    /** Tải bản đầy đủ từ cloud và áp vào màn hình. */
     const pull = async () => {
       const { data: row, error: e } = await supabase.from("user_data").select("data, updated_at").eq("user_id", userId).maybeSingle();
       if (cancelled || e || !row) return;
-      if (remoteStamp && time(row.updated_at) === time(remoteStamp)) return;
+      if (timerPending || saving || dirty) return; // người dùng vừa sửa trong lúc tải -> bỏ qua, để lưu trước
       const saved = row.data as Partial<Snapshot> | undefined;
       if (!saved || !Array.isArray(saved.accounts)) return;
       applyToStore(saved, useFiGo.getState().userName);
@@ -64,45 +65,64 @@ export function useCloudSync(userId: string) {
     };
 
     const save = async () => {
-      // Trước khi ghi, kiểm tra xem thiết bị khác đã lưu bản mới hơn chưa.
-      const { data: cur } = await supabase.from("user_data").select("data, updated_at").eq("user_id", userId).maybeSingle();
-      if (cancelled) return;
-      if (cur && remoteStamp && time(cur.updated_at) !== time(remoteStamp)) {
-        const remote = cur.data as Partial<Snapshot> | undefined;
-        if (remote && Array.isArray(remote.accounts)) {
-          const local = snapshot();
-          applyToStore(
-            {
-              userName: remote.userName || local.userName,
-              accounts: mergeById(remote.accounts, local.accounts),
-              transactions: mergeById(remote.transactions, local.transactions).sort((a, b) => b.date.localeCompare(a.date)),
-              budgets: mergeById(remote.budgets, local.budgets),
-              bills: mergeById(remote.bills, local.bills),
-              goals: mergeById(remote.goals, local.goals),
-              pinHash: remote.pinHash ?? local.pinHash,
-            },
-            local.userName,
-          );
+      if (saving) return;
+      saving = true;
+      try {
+        // Trước khi ghi, kiểm tra xem thiết bị khác đã lưu bản mới hơn chưa.
+        const { data: cur } = await supabase.from("user_data").select("data, updated_at").eq("user_id", userId).maybeSingle();
+        if (cancelled) return;
+        if (cur && remoteStamp && time(cur.updated_at) !== time(remoteStamp)) {
+          const remote = cur.data as Partial<Snapshot> | undefined;
+          if (remote && Array.isArray(remote.accounts)) {
+            const local = snapshot();
+            applyToStore(
+              {
+                userName: remote.userName || local.userName,
+                accounts: mergeById(remote.accounts, local.accounts),
+                transactions: mergeById(remote.transactions, local.transactions).sort((a, b) => b.date.localeCompare(a.date)),
+                budgets: mergeById(remote.budgets, local.budgets),
+                bills: mergeById(remote.bills, local.bills),
+                goals: mergeById(remote.goals, local.goals),
+                pinHash: remote.pinHash ?? local.pinHash,
+              },
+              local.userName,
+            );
+          }
         }
-      }
-      const snap = snapshot();
-      const stamp = new Date().toISOString();
-      const { error: e } = await supabase.from("user_data").upsert({ user_id: userId, data: snap as never, updated_at: stamp });
-      if (e) {
-        console.error("Sync failed", e.message);
-        return;
-      }
-      remoteStamp = stamp;
-      dirty = false;
-      if (snap.userName !== lastName) {
-        lastName = snap.userName;
-        await supabase.from("profiles").update({ display_name: snap.userName }).eq("id", userId);
+        const snap = snapshot();
+        const stamp = new Date().toISOString();
+        const { error: e } = await supabase.from("user_data").upsert({ user_id: userId, data: snap as never, updated_at: stamp });
+        if (e) {
+          console.error("Sync failed", e.message);
+          return; // dirty vẫn = true -> lần kiểm tra sau sẽ thử lưu lại
+        }
+        remoteStamp = stamp;
+        dirty = false;
+        if (snap.userName !== lastName) {
+          lastName = snap.userName;
+          await supabase.from("profiles").update({ display_name: snap.userName }).eq("id", userId);
+        }
+      } finally {
+        saving = false;
       }
     };
 
-    const refreshIfIdle = () => {
-      if (document.visibilityState === "visible" && !dirty) void pull();
+    /** Chạy mỗi vài giây: lưu nếu còn thay đổi chưa lưu, ngược lại hỏi cloud có bản mới không. */
+    const tick = async () => {
+      if (cancelled || ticking || document.visibilityState !== "visible") return;
+      if (timerPending || saving) return;
+      ticking = true;
+      try {
+        if (dirty) { await save(); return; }
+        const { data, error: e } = await supabase.from("user_data").select("updated_at").eq("user_id", userId).maybeSingle();
+        if (cancelled || e || !data) return;
+        if (remoteStamp && time(data.updated_at) === time(remoteStamp)) return;
+        await pull();
+      } finally {
+        ticking = false;
+      }
     };
+    const kick = () => { void tick(); };
 
     (async () => {
       const [{ data: row, error: e1 }, { data: profile }] = await Promise.all([
@@ -131,13 +151,18 @@ export function useCloudSync(userId: string) {
       unsub = useFiGo.subscribe(() => {
         if (applying) return;
         dirty = true;
+        timerPending = true;
         clearTimeout(timer);
-        timer = setTimeout(() => { void save(); }, 700);
+        timer = setTimeout(() => {
+          timerPending = false;
+          void save();
+        }, 700);
       });
 
-      document.addEventListener("visibilitychange", refreshIfIdle);
-      window.addEventListener("focus", refreshIfIdle);
-      poll = setInterval(refreshIfIdle, 20000);
+      document.addEventListener("visibilitychange", kick);
+      window.addEventListener("focus", kick);
+      window.addEventListener("online", kick);
+      poll = setInterval(kick, CHECK_EVERY_MS);
     })();
 
     return () => {
@@ -145,8 +170,9 @@ export function useCloudSync(userId: string) {
       unsub?.();
       clearTimeout(timer);
       if (poll) clearInterval(poll);
-      document.removeEventListener("visibilitychange", refreshIfIdle);
-      window.removeEventListener("focus", refreshIfIdle);
+      document.removeEventListener("visibilitychange", kick);
+      window.removeEventListener("focus", kick);
+      window.removeEventListener("online", kick);
     };
   }, [userId]);
 
