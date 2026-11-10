@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { CategoryPicker } from "@/components/finance/CategoryPicker";
 import { PageHeader, Panel, metaFor } from "@/components/finance/Common";
 import { categoriesByType, getCategory } from "@/lib/categories";
 import { accountBalance, billStatus } from "@/lib/finance";
@@ -203,7 +204,7 @@ function BillsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl">
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl">
           <DialogHeader><DialogTitle>{editing ? "Sửa hoá đơn" : "Thêm hoá đơn"}</DialogTitle><DialogDescription>{editing ? "Lịch thanh toán lặp lại hàng tháng." : `Lặp lại hàng tháng, bắt đầu từ ${format(selected, "d/M/yyyy")}.`}</DialogDescription></DialogHeader>
           <form onSubmit={submit} className="space-y-4">
             <div><Label>Tên khoản thanh toán</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Internet FPT" className="mt-1" /></div>
@@ -211,7 +212,7 @@ function BillsPage() {
               <div><Label>Số tiền</Label><Input value={amount} onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))} inputMode="numeric" className="mt-1" /></div>
               <div><Label>Ngày đến hạn</Label><Input type="number" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} className="mt-1" /></div>
             </div>
-            <div><Label>Danh mục</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{categoriesByType("expense").map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+            <CategoryPicker type="expense" value={category} onChange={setCategory} />
             <div><Label>Tài khoản thanh toán</Label><Select value={account} onValueChange={setAccount}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="flex items-center justify-between rounded-xl bg-muted p-3"><div><p className="text-sm font-medium">Nhắc khi gần đến hạn</p><p className="text-xs text-muted-foreground">Hiện cảnh báo trước 3 ngày</p></div><Switch checked={reminder} onCheckedChange={setReminder} /></div>
             <Button className="w-full" type="submit">Lưu hoá đơn</Button>
