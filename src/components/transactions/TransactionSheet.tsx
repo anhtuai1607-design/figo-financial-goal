@@ -148,7 +148,6 @@ export function TransactionSheet() {
   };
 
   const amountColor = type === "expense" ? "text-expense" : type === "income" ? "text-income" : "text-foreground";
-  const addQuick = (n: number) => setAmount(formatVndInput(parseVndInput(amount) + n));
   const balanceOf = (a: (typeof accounts)[number]) => accountBalance(a, editing ? txs.filter((t) => t.id !== editing.id) : txs);
   const accountChips = (label: string, value: string, onChange: (id: string) => void, list: typeof accounts) => (
     <div>
@@ -166,25 +165,21 @@ export function TransactionSheet() {
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl bg-gradient-to-b from-primary/10 via-background to-background sm:max-w-md">
+      <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-x-hidden overflow-y-auto rounded-2xl bg-white backdrop-blur-none dark:bg-neutral-900 sm:max-w-md">
         <DialogHeader><DialogTitle>{editing ? "Sửa giao dịch" : "Thêm giao dịch"}</DialogTitle><DialogDescription className="sr-only">Nhập thông tin giao dịch</DialogDescription></DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="min-w-0 space-y-4">
           <div className="grid grid-cols-3 rounded-xl bg-muted/80 p-1">
             {([["expense", "Chi"], ["income", "Thu"], ["transfer", "Chuyển quỹ"]] as const).map(([value, label]) => (
               <button key={value} type="button" onClick={() => changeType(value)} className={cn("rounded-lg py-2 text-sm font-semibold transition", type === value ? (value === "expense" ? "bg-expense text-white shadow-sm" : value === "income" ? "bg-income text-white shadow-sm" : "bg-sky-500 text-white shadow-sm") : "text-muted-foreground")}>{label}</button>
             ))}
           </div>
 
-          <div className={cn("rounded-2xl border px-4 py-3 text-center", type === "expense" ? "border-expense/25 bg-expense/10" : type === "income" ? "border-income/25 bg-income/10" : "border-sky-500/25 bg-sky-500/10")}>
-            <Label htmlFor="tx-amount" className="text-xs text-muted-foreground">Số tiền</Label>
+          <div className="rounded-2xl border bg-card px-4 py-3 text-center">
+            <Label htmlFor="tx-amount">Số tiền</Label>
             <div className="mt-1 flex items-center justify-center gap-1">
-              <Input id="tx-amount" inputMode="numeric" autoFocus value={amount} onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))} placeholder="0" className={cn("h-12 max-w-[70%] border-0 bg-transparent p-0 text-center text-3xl font-bold shadow-none focus-visible:ring-0", amountColor)} />
-              <span className="text-xl font-semibold text-muted-foreground">đ</span>
+              <Input id="tx-amount" inputMode="numeric" autoFocus value={amount} onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))} placeholder="0" className="h-12 max-w-[70%] border-0 bg-transparent p-0 text-center text-3xl font-bold text-foreground shadow-none focus-visible:ring-0" />
+              <span className="text-xl font-semibold text-foreground">đ</span>
             </div>
-            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-              {[50000, 100000, 500000, 1000000].map((n) => <button key={n} type="button" onClick={() => addQuick(n)} className="rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-foreground/70 active:scale-95 dark:bg-white/10">+{n >= 1000000 ? `${n / 1000000}tr` : `${n / 1000}k`}</button>)}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">Có thể nhập 1,5tr hoặc 500k</p>
           </div>
 
           {type !== "transfer" && <CategoryPicker type={type} value={categoryId} onChange={setCategoryId} />}

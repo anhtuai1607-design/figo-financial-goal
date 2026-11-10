@@ -112,8 +112,11 @@ export const useFiGo = create<FiGoState>()(
       removeTransaction: (id) =>
         set((s) => {
           const tx = s.transactions.find((x) => x.id === id);
+          const [billId, billMonth] = tx?.billKey?.split(":") ?? [];
           return {
             transactions: s.transactions.filter((x) => x.id !== id),
+            // Xoá khoản chi của hoá đơn thì hoá đơn kỳ đó cũng trở lại "chưa trả".
+            bills: billId ? s.bills.map((b) => (b.id === billId ? { ...b, paidMonths: b.paidMonths.filter((m) => m !== billMonth) } : b)) : s.bills,
             // Xoá khoản nạp quỹ thì trừ lại số tiền đã tích luỹ trong mục tiêu để hai bên luôn khớp nhau.
             goals: tx?.goalId ? s.goals.map((g) => (g.id === tx.goalId ? { ...g, saved: Math.max(0, toVnd(g.saved - tx.amount)) } : g)) : s.goals,
           };
@@ -135,7 +138,18 @@ export const useFiGo = create<FiGoState>()(
         if (!bill) return false;
         const paid = bill.paidMonths.includes(month);
         if (paid) {
-          set((s) => ({ bills: s.bills.map((x) => (x.id === id ? { ...x, paidMonths: x.paidMonths.filter((m) => m !== month) } : x)) }));
+          // Bỏ đánh dấu: hoàn lại khoản chi đã ghi cho kỳ này.
+          const key = `${id}:${month}`;
+          const note = `Thanh toán hoá đơn: ${bill.name}`;
+          set((s) => {
+            let list = s.transactions.filter((t) => t.billKey !== key);
+            if (list.length === s.transactions.length) {
+              // Giao dịch cũ (tạo trước khi có mã liên kết): gỡ khoản khớp gần nhất.
+              const last = [...s.transactions].reverse().find((t) => t.note === note && t.accountId === bill.accountId && t.amount === bill.amount);
+              if (last) list = s.transactions.filter((t) => t.id !== last.id);
+            }
+            return { transactions: list, bills: s.bills.map((x) => (x.id === id ? { ...x, paidMonths: x.paidMonths.filter((m) => m !== month) } : x)) };
+          });
           return false;
         }
         set((s) => ({ bills: s.bills.map((x) => (x.id === id ? { ...x, paidMonths: [...x.paidMonths, month] } : x)) }));
@@ -147,6 +161,7 @@ export const useFiGo = create<FiGoState>()(
             accountId: bill.accountId,
             date: new Date().toISOString(),
             note: `Thanh toán hoá đơn: ${bill.name}`,
+            billKey: `${id}:${month}`,
           });
         }
         return true;

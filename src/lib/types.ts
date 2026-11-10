@@ -23,6 +23,7 @@ export interface Transaction {
   note?: string;
   receipt?: string; // data URL
   goalId?: string | undefined; // khoản nạp quỹ mục tiêu
+  billKey?: string | undefined; // "mã hoá đơn:YYYY-MM" khi tạo từ việc đánh dấu đã trả hoá đơn
   createdAt: string;
 }
 

@@ -95,7 +95,7 @@ function BillsPage() {
       }
     }
     const nowPaid = toggle(bill.id, key, !paid);
-    toast.success(nowPaid ? "Đã thanh toán và ghi nhận khoản chi." : "Đã bỏ đánh dấu thanh toán.");
+    toast.success(nowPaid ? "Đã thanh toán và ghi nhận khoản chi." : "Đã bỏ đánh dấu và hoàn lại số tiền đã trừ.");
   };
   const del = (bill: Bill) => {
     if (!window.confirm(`Xoá hoá đơn "${bill.name}"? Lịch nhắc của khoản này sẽ không còn.`)) return;
