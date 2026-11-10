@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, TransactionRow, metaFor } from "@/components/finance/Common";
 import { AccountCard } from "@/components/finance/AccountCard";
+import { PeriodCharts } from "@/components/finance/PeriodCharts";
 import { TransactionDetail } from "@/components/transactions/TransactionDetail";
 import { type TrendRange, accountBalance, buildInsights, categoryBreakdown, monthTotals, totalBalance, trendSeries } from "@/lib/finance";
 import { formatVnd, monthLabel, monthKey } from "@/lib/format";
@@ -40,6 +41,7 @@ function Dashboard() {
   const txs = useFiGo((s) => s.transactions);
   const budgets = useFiGo((s) => s.budgets);
   const goals = useFiGo((s) => s.goals);
+  const bills = useFiGo((s) => s.bills);
   const userName = useFiGo((s) => s.userName);
   const remove = useFiGo((s) => s.removeTransaction);
   const openTx = useUI((s) => s.openTxSheet);
@@ -99,66 +101,7 @@ function Dashboard() {
         <Summary icon={<ArrowUpRight />} label="Tổng chi" value={totals.expense} tone="expense" />
         <Summary icon={<WalletCards />} label="Còn lại tháng này" value={totals.net} tone="primary" />
       </section>
-      <section className="mb-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]">
-        <Panel>
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div className="min-w-0"><h2 className="font-bold">Xu hướng thu – chi</h2><p className="text-xs text-muted-foreground">{rangeLabel}</p></div>
-          </div>
-          <div className="segmented relative mb-4 grid grid-cols-3 text-xs font-semibold">
-            {RANGES.map((r) => (
-              <button key={r.key} type="button" onClick={() => setRange(r.key)} className={cn("relative z-10 rounded-full py-2 transition-colors", range === r.key ? "text-foreground" : "text-muted-foreground")}>
-                {range === r.key && <motion.span layoutId="trend-range" className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ left: -18, right: 8 }}>
-                <defs>
-                  <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35}/><stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.28}/><stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="var(--border)"/>
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}/>
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `${Math.round(v / 1_000_000)}tr`} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}/>
-                <Tooltip formatter={(v) => formatVnd(Number(v))} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 }}/>
-                <Area type="monotone" dataKey="income" name="Thu" stroke="var(--chart-1)" fill="url(#incomeFill)" strokeWidth={2.5}/>
-                <Area type="monotone" dataKey="expense" name="Chi" stroke="var(--chart-2)" fill="url(#expenseFill)" strokeWidth={2.5}/>
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Panel>
-        <Panel>
-          <h2 className="font-bold">Cơ cấu chi tiêu</h2>
-          <p className="text-xs text-muted-foreground">Theo danh mục trong tháng</p>
-          {breakdown.length ? (
-            <>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={breakdown} dataKey="amount" nameKey="name" innerRadius={55} outerRadius={82} paddingAngle={3}>
-                      {breakdown.map((item, i) => <Cell key={item.categoryId} fill={chartColors[i % chartColors.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => formatVnd(Number(v))} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 }}/>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-2">
-                {breakdown.slice(0, 4).map((item, i) => (
-                  <div key={item.categoryId} className="flex items-center gap-2 text-xs">
-                    <span className="size-2 rounded-full" style={{ background: chartColors[i % chartColors.length] }} />
-                    <span className="flex-1 truncate text-muted-foreground">{item.name}</span>
-                    <strong>{item.pct}%</strong>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="py-20 text-center text-sm text-muted-foreground">Chưa có khoản chi tháng này.</p>
-          )}
-        </Panel>
-      </section>
+      <PeriodCharts txs={txs} bills={bills} />
       <section className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <Panel>
           <div className="mb-2 flex items-center justify-between">
