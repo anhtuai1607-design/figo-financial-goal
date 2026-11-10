@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFiGo } from "./store";
 import type { ChatSession } from "./types";
 
-type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash" | "assistantSessions" | "customCategories">;
+type Snapshot = Pick<ReturnType<typeof useFiGo.getState>, "userName" | "accounts" | "transactions" | "budgets" | "bills" | "goals" | "pinHash" | "assistantSessions" | "customCategories" | "hiddenCategories">;
 
 function snapshot(): Snapshot {
   const s = useFiGo.getState();
-  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash, assistantSessions: s.assistantSessions, customCategories: s.customCategories };
+  return { userName: s.userName, accounts: s.accounts, transactions: s.transactions, budgets: s.budgets, bills: s.bills, goals: s.goals, pinHash: s.pinHash, assistantSessions: s.assistantSessions, customCategories: s.customCategories, hiddenCategories: s.hiddenCategories };
 }
 
 const time = (s: string) => new Date(s).getTime();
@@ -61,6 +61,7 @@ export function useCloudSync(userId: string) {
         pinHash: saved.pinHash ?? null,
         assistantSessions: saved.assistantSessions ?? [],
         customCategories: saved.customCategories ?? [],
+        hiddenCategories: saved.hiddenCategories ?? [],
       });
       applying = false;
     };
@@ -99,6 +100,7 @@ export function useCloudSync(userId: string) {
                 pinHash: remote.pinHash ?? local.pinHash,
               assistantSessions: mergeSessions(remote.assistantSessions, local.assistantSessions),
               customCategories: mergeById(remote.customCategories, local.customCategories),
+              hiddenCategories: [...new Set([...(remote.hiddenCategories ?? []), ...(local.hiddenCategories ?? [])])],
               },
               local.userName,
             );

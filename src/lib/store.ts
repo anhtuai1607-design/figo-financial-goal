@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { Account, Bill, Budget, ChatSession, CustomCategory, Goal, Transaction } from "./types";
 import { applyCustomCategories } from "./categories";
 import { uid, toVnd } from "./format";
+import { accountBalance } from "./finance";
 
 interface FiGoState {
   hydrated: boolean;
@@ -43,14 +44,16 @@ interface FiGoState {
   addGoal: (g: Omit<Goal, "id" | "createdAt" | "saved">) => void;
   updateGoal: (id: string, g: Partial<Goal>) => void;
   removeGoal: (id: string) => void;
-  depositGoal: (id: string, amount: number, accountId?: string) => void;
+  depositGoal: (id: string, amount: number, accountId: string) => string | null;
+  hiddenCategories: string[];
+  setHiddenCats: (ids: string[]) => void;
 
   resetAll: () => void;
 }
 
 export const WALLET_ID = "figo_wallet";
 
-const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [], assistantSessions: [], customCategories: [] };
+const empty = { accounts: [], transactions: [], budgets: [], bills: [], goals: [], assistantSessions: [], customCategories: [], hiddenCategories: [] };
 
 export const useFiGo = create<FiGoState>()(
   persist(
@@ -67,6 +70,8 @@ export const useFiGo = create<FiGoState>()(
       setAssistantSessions: (list) => set({ assistantSessions: list.slice(0, 30) }),
       customCategories: [],
       setCustomCats: (list) => set({ customCategories: list }),
+      hiddenCategories: [],
+      setHiddenCats: (ids) => set({ hiddenCategories: ids }),
       pinHash: null,
 
       setPin: (pinHash) => set({ pinHash }),
@@ -104,7 +109,15 @@ export const useFiGo = create<FiGoState>()(
             .map((x) => (x.id === id ? { ...x, ...t, amount: toVnd(t.amount ?? x.amount) } : x))
             .sort((a, b) => b.date.localeCompare(a.date)),
         })),
-      removeTransaction: (id) => set((s) => ({ transactions: s.transactions.filter((x) => x.id !== id) })),
+      removeTransaction: (id) =>
+        set((s) => {
+          const tx = s.transactions.find((x) => x.id === id);
+          return {
+            transactions: s.transactions.filter((x) => x.id !== id),
+            // Xoá khoản nạp quỹ thì trừ lại số tiền đã tích luỹ trong mục tiêu để hai bên luôn khớp nhau.
+            goals: tx?.goalId ? s.goals.map((g) => (g.id === tx.goalId ? { ...g, saved: Math.max(0, toVnd(g.saved - tx.amount)) } : g)) : s.goals,
+          };
+        }),
 
       upsertBudget: (b) =>
         set((s) => {
@@ -144,18 +157,24 @@ export const useFiGo = create<FiGoState>()(
       removeGoal: (id) => set((s) => ({ goals: s.goals.filter((x) => x.id !== id) })),
       depositGoal: (id, amount, accountId) => {
         const goal = get().goals.find((g) => g.id === id);
-        if (!goal) return;
+        if (!goal) return "Không tìm thấy mục tiêu.";
+        const acc = get().accounts.find((a) => a.id === accountId);
+        if (!acc) return "Vui lòng chọn tài khoản để nạp tiền.";
+        const remaining = Math.max(0, goal.target - goal.saved);
+        if (amount > remaining) return remaining === 0 ? "Mục tiêu này đã đủ tiền." : `Mục tiêu chỉ còn cần ${remaining.toLocaleString("vi-VN")} đ.`;
+        const balance = accountBalance(acc, get().transactions);
+        if (amount > balance) return `Số dư ${acc.name} không đủ (còn ${balance.toLocaleString("vi-VN")} đ).`;
         set((s) => ({ goals: s.goals.map((x) => (x.id === id ? { ...x, saved: toVnd(x.saved + amount) } : x)) }));
-        if (accountId) {
-          get().addTransaction({
-            type: "expense",
-            amount,
-            categoryId: "tiet_kiem",
-            accountId,
-            date: new Date().toISOString(),
-            note: `Nạp quỹ: ${goal.emoji} ${goal.name}`,
-          });
-        }
+        get().addTransaction({
+          type: "expense",
+          amount,
+          categoryId: "tiet_kiem",
+          accountId,
+          date: new Date().toISOString(),
+          note: `Nạp quỹ: ${goal.name}`,
+          goalId: id,
+        });
+        return null;
       },
 
       resetAll: () => set({ ...empty, pinHash: null }),
@@ -174,6 +193,7 @@ export const useFiGo = create<FiGoState>()(
         pinHash: s.pinHash,
         assistantSessions: s.assistantSessions,
         customCategories: s.customCategories,
+        hiddenCategories: s.hiddenCategories,
       }),
     },
   ),
@@ -181,9 +201,11 @@ export const useFiGo = create<FiGoState>()(
 
 // Giữ danh sách danh mục tự tạo luôn khớp với kho dữ liệu (kể cả khi dữ liệu mới tải từ cloud về).
 let lastCustom: unknown;
+let lastHidden: unknown;
 useFiGo.subscribe((s) => {
-  if (s.customCategories !== lastCustom) {
+  if (s.customCategories !== lastCustom || s.hiddenCategories !== lastHidden) {
     lastCustom = s.customCategories;
-    applyCustomCategories(s.customCategories);
+    lastHidden = s.hiddenCategories;
+    applyCustomCategories(s.customCategories, s.hiddenCategories);
   }
 });

@@ -112,11 +112,15 @@ export const ICON_OPTIONS: Record<string, LucideIcon> = {
   gift: Gift, paw: PawPrint, baby: Baby, plane: Plane, wrench: Wrench, piggy: PiggyBank, work: Briefcase, trend: TrendingUp,
   dumbbell: Dumbbell, wifi: Wifi, tv: Tv, water: Droplets, coins: HandCoins, star: Sparkles,
 };
+/** 10 biểu tượng phổ biến cho người dùng chọn khi thêm danh mục. */
+export const PICKER_ICONS = ["utensils", "bag", "bus", "home", "heart", "film", "school", "gift", "phone", "piggy"] as const;
 export const HUE_OPTIONS = [15, 35, 60, 100, 150, 190, 220, 260, 300, 340];
 
 let custom: Category[] = [];
-export function applyCustomCategories(list: CustomCategory[]) {
-  custom = list.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: ICON_OPTIONS[c.icon] ?? Sparkles, hue: c.hue }));
+let hidden = new Set<string>();
+export function applyCustomCategories(list: CustomCategory[], hiddenIds: string[] = []) {
+  custom = list.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: ICON_OPTIONS[c.icon] ?? CATEGORIES.find((x) => x.id === c.id)?.icon ?? Sparkles, hue: c.hue }));
+  hidden = new Set(hiddenIds);
 }
 
 const map = new Map(CATEGORIES.map((c) => [c.id, c]));
@@ -129,11 +133,14 @@ const fallbackCategory: Category = {
 };
 
 export function getCategory(id: string): Category {
-  return map.get(id) ?? custom.find((c) => c.id === id) ?? fallbackCategory;
+  return custom.find((c) => c.id === id) ?? map.get(id) ?? fallbackCategory;
 }
 
 export function categoriesByType(type: TransactionType) {
-  return [...CATEGORIES, ...custom].filter((c) => c.type === type);
+  const overrides = new Map(custom.map((x) => [x.id, x]));
+  const base = CATEGORIES.map((x) => overrides.get(x.id) ?? x);
+  const added = custom.filter((x) => !map.has(x.id));
+  return [...base, ...added].filter((x) => x.type === type && !hidden.has(x.id));
 }
 
 export function categoryColor(id: string, alpha = 1) {

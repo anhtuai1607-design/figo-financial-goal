@@ -22,6 +22,7 @@ export interface Transaction {
   date: string; // ISO string
   note?: string;
   receipt?: string; // data URL
+  goalId?: string | undefined; // khoản nạp quỹ mục tiêu
   createdAt: string;
 }
 
