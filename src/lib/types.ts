@@ -42,6 +42,7 @@ export interface Bill {
   dueDay: number; // 1..31
   reminder: boolean;
   paidMonths: string[]; // ["2026-09"]
+  startMonth?: string | undefined; // "YYYY-MM": không hiện ở các tháng trước đó
   icon?: string;
 }
 

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Bell, BellOff, CalendarDays, Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { format, getDaysInMonth } from "date-fns";
+import { vi } from "date-fns/locale";
+import { Bell, BellOff, Check, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,21 +10,214 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { EmptyState, PageHeader, Panel, metaFor } from "@/components/finance/Common";
+import { PageHeader, Panel, metaFor } from "@/components/finance/Common";
 import { categoriesByType, getCategory } from "@/lib/categories";
-import { billStatus } from "@/lib/finance";
-import { formatVnd, formatVndInput, monthKey, parseVndInput } from "@/lib/format";
+import { accountBalance, billStatus } from "@/lib/finance";
+import { formatVnd, formatVndInput, parseVndInput } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
 import type { Bill } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/bills")({ head: () => ({ meta: metaFor("Hoá đơn định kỳ", "Theo dõi ngày đến hạn và đánh dấu các khoản thanh toán hàng tháng.") }), component: BillsPage });
 
+const WEEK = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+const mkOf = (d: Date) => format(d, "yyyy-MM");
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 function BillsPage() {
-  const bills = useFiGo((s) => s.bills); const accounts = useFiGo((s) => s.accounts); const add = useFiGo((s) => s.addBill); const update = useFiGo((s) => s.updateBill); const remove = useFiGo((s) => s.removeBill); const toggle = useFiGo((s) => s.toggleBillPaid);
-  const [open, setOpen] = useState(false); const [editing, setEditing] = useState<Bill | null>(null); const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [category, setCategory] = useState("dien_nuoc"); const [account, setAccount] = useState(""); const [dueDay, setDueDay] = useState("1"); const [reminder, setReminder] = useState(true); const key = monthKey();
-  const show = (bill?: Bill) => { setEditing(bill ?? null); setName(bill?.name ?? ""); setAmount(bill ? formatVndInput(bill.amount) : ""); setCategory(bill?.categoryId ?? "dien_nuoc"); setAccount(bill?.accountId ?? accounts[0]?.id ?? ""); setDueDay(String(bill?.dueDay ?? 1)); setReminder(bill?.reminder ?? true); setOpen(true); };
-  const submit = (e: FormEvent) => { e.preventDefault(); const value = parseVndInput(amount); if (!name.trim() || !value || !account) { toast.error("Vui lòng điền đủ thông tin."); return; } const data = { name: name.trim(), amount: value, categoryId: category, accountId: account, dueDay: Math.min(31, Math.max(1, Number(dueDay))), reminder }; if (editing) update(editing.id, data); else add(data); toast.success(editing ? "Đã cập nhật hoá đơn." : "Đã thêm hoá đơn."); setOpen(false); };
-  return <div><PageHeader title="Hóa đơn & định kỳ" subtitle="Lịch nhắc và các khoản chi định kỳ" action={<Button onClick={() => show()}><Plus /> Thêm hoá đơn</Button>} /><Panel className="mb-5 overflow-hidden"><p className="mb-3 text-sm font-bold">Lịch tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</p><div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">{["T2","T3","T4","T5","T6","T7","CN"].map((d) => <span key={d}>{d}</span>)}</div><div className="mt-3 grid grid-cols-7 gap-1">{Array.from({ length: (new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() + 6) % 7 }, (_, i) => <div key={`blank-${i}`} />)}{Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map((day) => { const lastDay = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); const dayBills = bills.filter((b) => Math.min(b.dueDay, lastDay) === day); const isToday = day === new Date().getDate(); return <div key={day} className={cn("min-h-12 rounded-lg p-1 text-xs", dayBills.length ? "bg-accent" : "bg-muted/50")}><span className={isToday ? "font-bold text-primary" : ""}>{day}</span>{dayBills.slice(0,2).map((b) => <span key={b.id} className="mt-0.5 block truncate rounded bg-card px-1 py-0.5 text-[9px] text-primary">{b.name}</span>)}</div>; })}</div></Panel>{bills.length ? <div className="grid gap-4 md:grid-cols-2">{[...bills].sort((a,b) => a.dueDay-b.dueDay).map((bill) => { const st = billStatus(bill, key); const cat = getCategory(bill.categoryId); const Icon = cat.icon; return <Panel key={bill.id}><div className="flex items-start gap-3"><span className={cn("flex size-11 items-center justify-center rounded-xl", st.paid ? "bg-accent text-primary" : st.overdue ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}><Icon className="size-5"/></span><div className="min-w-0 flex-1"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2"><div className="min-w-0"><h2 className="truncate font-bold">{bill.name}</h2><p className="text-xs text-muted-foreground">Ngày {bill.dueDay} hàng tháng · {accounts.find((a) => a.id === bill.accountId)?.name}</p></div><div className="flex"><Button size="icon" variant="ghost" onClick={() => update(bill.id, { reminder: !bill.reminder })} aria-label="Bật tắt nhắc nhở">{bill.reminder ? <Bell/> : <BellOff/>}</Button><Button size="icon" variant="ghost" onClick={() => show(bill)} aria-label="Sửa hoá đơn"><Pencil/></Button><Button size="icon" variant="ghost" onClick={() => { remove(bill.id); toast.success("Đã xoá hoá đơn."); }} aria-label="Xoá hoá đơn" className="hover:text-destructive"><Trash2/></Button></div></div><p className="mt-3 text-xl font-extrabold tabular">{formatVnd(bill.amount)}</p><div className="mt-4 flex flex-wrap items-center justify-between gap-3"><span className={cn("text-xs font-medium", st.paid ? "text-primary" : st.overdue ? "text-destructive" : "text-muted-foreground")}>{st.paid ? "Đã thanh toán" : st.overdue ? `Quá hạn ${-st.daysLeft} ngày` : st.daysLeft === 0 ? "Đến hạn hôm nay" : `Còn ${st.daysLeft} ngày`}</span><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { const paid = toggle(bill.id, key, !st.paid); toast.success(paid ? "Đã thanh toán và ghi nhận khoản chi." : "Đã bỏ đánh dấu thanh toán."); }}>{st.paid ? "Hoàn tác" : <><Check/> Ghi đã trả</>}</Button></div></div></div></div></Panel>; })}</div> : <Panel><EmptyState title="Chưa có hoá đơn" text="Thêm tiền nhà, Internet hoặc các khoản định kỳ để được nhắc đúng lúc."/></Panel>}
-  <Dialog open={open} onOpenChange={setOpen}><DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl"><DialogHeader><DialogTitle>{editing ? "Sửa hoá đơn" : "Thêm hoá đơn"}</DialogTitle><DialogDescription>Lịch thanh toán lặp lại hàng tháng.</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><div><Label>Tên khoản thanh toán</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Internet FPT" className="mt-1"/></div><div className="grid grid-cols-2 gap-3"><div><Label>Số tiền</Label><Input value={amount} onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))} inputMode="numeric" className="mt-1"/></div><div><Label>Ngày đến hạn</Label><Input type="number" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} className="mt-1"/></div></div><div><Label>Danh mục</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1"><SelectValue/></SelectTrigger><SelectContent>{categoriesByType("expense").map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div><div><Label>Tài khoản thanh toán</Label><Select value={account} onValueChange={setAccount}><SelectTrigger className="mt-1"><SelectValue/></SelectTrigger><SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div><div className="flex items-center justify-between rounded-xl bg-muted p-3"><div><p className="text-sm font-medium">Nhắc khi gần đến hạn</p><p className="text-xs text-muted-foreground">Hiện cảnh báo trước 3 ngày</p></div><Switch checked={reminder} onCheckedChange={setReminder}/></div><Button className="w-full" type="submit">Lưu hoá đơn</Button></form></DialogContent></Dialog></div>;
+  const bills = useFiGo((s) => s.bills);
+  const accounts = useFiGo((s) => s.accounts);
+  const txs = useFiGo((s) => s.transactions);
+  const add = useFiGo((s) => s.addBill);
+  const update = useFiGo((s) => s.updateBill);
+  const remove = useFiGo((s) => s.removeBill);
+  const toggle = useFiGo((s) => s.toggleBillPaid);
+
+  const today = new Date();
+  const nowKey = mkOf(today);
+  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selected, setSelected] = useState(today);
+  const [picker, setPicker] = useState(false);
+  const [pickYear, setPickYear] = useState(today.getFullYear());
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Bill | null>(null);
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("dien_nuoc");
+  const [account, setAccount] = useState("");
+  const [dueDay, setDueDay] = useState("1");
+  const [reminder, setReminder] = useState(true);
+
+  const mk = mkOf(cursor);
+  const dim = getDaysInMonth(cursor);
+  const lead = (cursor.getDay() + 6) % 7;
+  const visible = (b: Bill) => !b.startMonth || mk >= b.startMonth;
+  const onDay = (day: number) => bills.filter((b) => visible(b) && Math.min(b.dueDay, dim) === day);
+  const selDay = selected.getFullYear() === cursor.getFullYear() && selected.getMonth() === cursor.getMonth() ? selected.getDate() : null;
+  const dayBills = selDay ? onDay(selDay) : [];
+
+  const goTo = (d: Date) => {
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    setCursor(first);
+    setSelected(mkOf(first) === nowKey ? today : first);
+  };
+  const shift = (n: number) => goTo(new Date(cursor.getFullYear(), cursor.getMonth() + n, 1));
+
+  const show = (bill?: Bill) => {
+    setEditing(bill ?? null);
+    setName(bill?.name ?? "");
+    setAmount(bill ? formatVndInput(bill.amount) : "");
+    setCategory(bill?.categoryId ?? "dien_nuoc");
+    setAccount(bill?.accountId ?? accounts[0]?.id ?? "");
+    setDueDay(String(bill?.dueDay ?? selected.getDate()));
+    setReminder(bill?.reminder ?? true);
+    setOpen(true);
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const value = parseVndInput(amount);
+    if (!name.trim() || !value || !account) { toast.error("Vui lòng điền đủ thông tin."); return; }
+    const data = { name: name.trim(), amount: value, categoryId: category, accountId: account, dueDay: Math.min(31, Math.max(1, Number(dueDay))), reminder };
+    if (editing) update(editing.id, data);
+    else add({ ...data, startMonth: mkOf(selected) });
+    toast.success(editing ? "Đã cập nhật hoá đơn." : "Đã thêm hoá đơn.");
+    setOpen(false);
+  };
+  const pay = (bill: Bill, key: string, paid: boolean) => {
+    if (!paid) {
+      if (key > nowKey) { toast.error("Chưa đến kỳ thanh toán này."); return; }
+      const acc = accounts.find((a) => a.id === bill.accountId);
+      if (acc) {
+        const bal = accountBalance(acc, txs);
+        if (bill.amount > bal) { toast.error(`Số dư ${acc.name} không đủ (còn ${formatVnd(bal)}).`); return; }
+      }
+    }
+    const nowPaid = toggle(bill.id, key, !paid);
+    toast.success(nowPaid ? "Đã thanh toán và ghi nhận khoản chi." : "Đã bỏ đánh dấu thanh toán.");
+  };
+  const del = (bill: Bill) => {
+    if (!window.confirm(`Xoá hoá đơn "${bill.name}"? Lịch nhắc của khoản này sẽ không còn.`)) return;
+    remove(bill.id);
+    toast.success("Đã xoá hoá đơn.");
+  };
+
+  const row = (bill: Bill) => {
+    const st = billStatus(bill, mk);
+    const Icon = getCategory(bill.categoryId).icon;
+    return (
+      <div key={bill.id} className="py-3.5 first:pt-0 last:pb-0">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => pay(bill, mk, st.paid)} aria-label={st.paid ? "Bỏ đánh dấu đã trả" : "Ghi đã trả"} className={cn("flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90", st.paid ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40")}>
+            {st.paid && <Check className="size-4" strokeWidth={3} />}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className={cn("truncate font-semibold", st.paid && "text-muted-foreground line-through")}>{bill.name}</p>
+            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground"><Icon className="size-3.5 shrink-0" />Ngày {bill.dueDay} hàng tháng · {accounts.find((a) => a.id === bill.accountId)?.name}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold tabular-nums">{formatVnd(bill.amount)}</p>
+            <p className={cn("text-xs font-medium", st.paid ? "text-primary" : st.overdue ? "text-destructive" : "text-muted-foreground")}>{st.paid ? "Đã thanh toán" : st.overdue ? `Quá hạn ${-st.daysLeft} ngày` : st.daysLeft === 0 ? "Hôm nay" : `Còn ${st.daysLeft} ngày`}</p>
+          </div>
+        </div>
+        <div className="mt-1 flex justify-end gap-0.5">
+          <Button size="icon" variant="ghost" className="size-8" onClick={() => update(bill.id, { reminder: !bill.reminder })} aria-label="Bật tắt nhắc nhở">{bill.reminder ? <Bell className="size-4" /> : <BellOff className="size-4" />}</Button>
+          <Button size="icon" variant="ghost" className="size-8" onClick={() => show(bill)} aria-label="Sửa hoá đơn"><Pencil className="size-4" /></Button>
+          <Button size="icon" variant="ghost" className="size-8 hover:text-destructive" onClick={() => del(bill)} aria-label="Xoá hoá đơn"><Trash2 className="size-4" /></Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <PageHeader title="Hóa đơn & định kỳ" subtitle="Chạm vào một ngày để thêm hoá đơn" action={<Button onClick={() => show()}><Plus /> Thêm hoá đơn</Button>} />
+
+      <Panel className="mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <button type="button" onClick={() => { setPicker(!picker); setPickYear(cursor.getFullYear()); }} className="flex items-center gap-1 text-lg font-bold">
+            {cap(format(cursor, "MMMM, yyyy", { locale: vi }))}
+            <ChevronRight className={cn("size-4 text-muted-foreground transition", picker && "rotate-90")} />
+          </button>
+          <div className="flex items-center gap-1">
+            {mk !== nowKey && <button type="button" onClick={() => goTo(today)} className="mr-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Hôm nay</button>}
+            <Button size="icon" variant="ghost" className="size-9 rounded-full" onClick={() => shift(-1)} aria-label="Tháng trước"><ChevronLeft /></Button>
+            <Button size="icon" variant="ghost" className="size-9 rounded-full" onClick={() => shift(1)} aria-label="Tháng sau"><ChevronRight /></Button>
+          </div>
+        </div>
+
+        {picker ? (
+          <div className="rounded-2xl bg-muted/50 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <Button size="icon" variant="ghost" className="size-8 rounded-full" onClick={() => setPickYear(pickYear - 1)} aria-label="Năm trước"><ChevronLeft /></Button>
+              <span className="font-semibold">{pickYear}</span>
+              <Button size="icon" variant="ghost" className="size-8 rounded-full" onClick={() => setPickYear(pickYear + 1)} aria-label="Năm sau"><ChevronRight /></Button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 12 }, (_, i) => (
+                <button key={i} type="button" onClick={() => { goTo(new Date(pickYear, i, 1)); setPicker(false); }} className={cn("rounded-xl py-2 text-sm font-medium", pickYear === cursor.getFullYear() && i === cursor.getMonth() ? "bg-primary text-primary-foreground" : "bg-card")}>Th{i + 1}</button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">{WEEK.map((d) => <span key={d} className="py-1">{d}</span>)}</div>
+            <div className="grid grid-cols-7 gap-y-1">
+              {Array.from({ length: lead }, (_, i) => <div key={`b${i}`} />)}
+              {Array.from({ length: dim }, (_, i) => i + 1).map((day) => {
+                const list = onDay(day);
+                const isToday = mk === nowKey && day === today.getDate();
+                const isSel = day === selDay;
+                return (
+                  <button key={day} type="button" onClick={() => setSelected(new Date(cursor.getFullYear(), cursor.getMonth(), day))} className="relative mx-auto flex h-11 w-11 flex-col items-center justify-center">
+                    <span className={cn("flex size-9 items-center justify-center rounded-full text-sm transition", isToday ? "bg-primary font-semibold text-primary-foreground" : isSel ? "bg-primary/10 font-semibold text-primary ring-1 ring-primary/40" : "")}>{day}</span>
+                    {list.length > 0 && (
+                      <span className="absolute bottom-0 flex gap-0.5">
+                        {list.slice(0, 3).map((b) => <span key={b.id} className={cn("size-1 rounded-full", b.paidMonths.includes(mk) ? "bg-primary" : "bg-expense")} />)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Panel>
+
+      <Panel className="mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="font-bold">{cap(format(selected, "EEEE, d 'tháng' M", { locale: vi }))}</p>
+            <p className="text-xs text-muted-foreground">{dayBills.length ? `${dayBills.length} khoản đến hạn` : "Chưa có hoá đơn"}</p>
+          </div>
+          <Button size="sm" onClick={() => show()}><Plus /> Thêm</Button>
+        </div>
+        {dayBills.length ? <div className="divide-y">{dayBills.map(row)}</div> : <p className="rounded-xl bg-muted/50 py-6 text-center text-sm text-muted-foreground">Ngày này chưa có khoản nào. Bấm Thêm để ghi luôn cho ngày {selected.getDate()}.</p>}
+      </Panel>
+
+      {bills.length > 0 && (
+        <Panel>
+          <p className="mb-3 font-bold">Tất cả hoá đơn định kỳ</p>
+          <div className="divide-y">{[...bills].sort((a, b) => a.dueDay - b.dueDay).map(row)}</div>
+        </Panel>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl">
+          <DialogHeader><DialogTitle>{editing ? "Sửa hoá đơn" : "Thêm hoá đơn"}</DialogTitle><DialogDescription>{editing ? "Lịch thanh toán lặp lại hàng tháng." : `Lặp lại hàng tháng, bắt đầu từ ${format(selected, "d/M/yyyy")}.`}</DialogDescription></DialogHeader>
+          <form onSubmit={submit} className="space-y-4">
+            <div><Label>Tên khoản thanh toán</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Internet FPT" className="mt-1" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Số tiền</Label><Input value={amount} onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))} inputMode="numeric" className="mt-1" /></div>
+              <div><Label>Ngày đến hạn</Label><Input type="number" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} className="mt-1" /></div>
+            </div>
+            <div><Label>Danh mục</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{categoriesByType("expense").map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Tài khoản thanh toán</Label><Select value={account} onValueChange={setAccount}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="flex items-center justify-between rounded-xl bg-muted p-3"><div><p className="text-sm font-medium">Nhắc khi gần đến hạn</p><p className="text-xs text-muted-foreground">Hiện cảnh báo trước 3 ngày</p></div><Switch checked={reminder} onCheckedChange={setReminder} /></div>
+            <Button className="w-full" type="submit">Lưu hoá đơn</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
