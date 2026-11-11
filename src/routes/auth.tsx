@@ -44,6 +44,20 @@ const pwRules = (p: string) => [
   { ok: /\d/.test(p), label: "Có chữ số" },
 ];
 
+function PasswordMeter({ password }: { password: string }) {
+  const rules = pwRules(password);
+  const ok = rules.filter((r) => r.ok).length;
+  const missing = rules.filter((r) => !r.ok).map((r) => r.label.toLowerCase());
+  return (
+    <div className="-mt-1 space-y-1.5" aria-live="polite">
+      <div className="flex gap-1.5">{rules.map((r) => <span key={r.label} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${r.ok ? "bg-primary" : "bg-muted-foreground/20"}`} />)}</div>
+      <p className={`flex items-center gap-1 text-xs ${ok === rules.length ? "text-primary" : "text-muted-foreground"}`}>
+        {ok === rules.length ? <><Check className="size-3.5" />Mật khẩu ổn</> : `Cần thêm: ${missing.join(", ")}`}
+      </p>
+    </div>
+  );
+}
+
 function viError(msg: string) {
   if (/invalid login/i.test(msg)) return "Email hoặc mật khẩu không đúng";
   if (/already registered|already exists/i.test(msg)) return "Email này đã được đăng ký";
@@ -71,13 +85,11 @@ function AuthPage() {
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [serverErr, setServerErr] = useState<{ field: "email" | "password" | "both" | "form"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  const [showPw2, setShowPw2] = useState(false);
   const [focusPw, setFocusPw] = useState(false);
   const [flash, setFlash] = useState<"happy" | "sad" | null>(null);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
@@ -110,17 +122,20 @@ function AuthPage() {
     name: mode === "up" && name.trim().length < 2 ? "Hãy nhập họ và tên (ít nhất 2 ký tự)" : null,
     email: emailError(email) ?? (serverErr && (serverErr.field === "email" || serverErr.field === "both") ? serverErr.message : null),
     password: !password ? "Vui lòng nhập mật khẩu" : mode === "up" && !pwRules(password).every((r) => r.ok) ? "Mật khẩu chưa đủ mạnh" : serverErr && (serverErr.field === "password" || serverErr.field === "both") ? (serverErr.field === "both" ? " " : serverErr.message) : null,
-    confirm: mode === "up" && confirm !== password ? "Mật khẩu nhập lại chưa khớp" : null,
   };
   const show = (k: keyof typeof errors) => (touched[k] || (serverErr && (k === "email" || k === "password"))) && errors[k];
   const hint = mode === "up" || touched.email ? emailHint(email) : null;
+  const emailOk = !emailError(email);
+  const progress = mode === "up"
+    ? ((name.trim().length >= 2 ? 1 : 0) + (emailOk ? 1 : 0) + (pwRules(password).every((r) => r.ok) ? 1 : 0)) / 3
+    : ((emailOk ? 1 : 0) + (password ? 1 : 0)) / 2;
 
   function flashMood(m: "happy" | "sad", ms = 1100) { setFlash(m); window.setTimeout(() => setFlash(null), ms); }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setTouched({ name: true, email: true, password: true, confirm: true });
-    const order: (keyof typeof errors)[] = ["name", "email", "password", "confirm"];
+    setTouched({ name: true, email: true, password: true });
+    const order: (keyof typeof errors)[] = ["name", "email", "password"];
     const firstBad = order.find((k) => errors[k] && !(k === "password" && serverErr));
     if (firstBad) { flashMood("sad"); document.getElementById(firstBad)?.focus(); return; }
     setLoading(true);
@@ -160,19 +175,31 @@ function AuthPage() {
     setPointer({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: ((e.clientY - r.top) / r.height) * 2 - 1 });
   };
 
-  const pwField = (id: "password" | "confirm", label: string, value: string, set: (v: string) => void, visible: boolean, toggle: () => void, auto: string) => (
+  const pwField = (id: "password", label: string, value: string, set: (v: string) => void, visible: boolean, toggle: () => void, auto: string) => (
     <Field id={id} label={label} error={show(id) ? (errors[id] === " " ? null : errors[id]) : null}>
       <div className="relative">
-        <Input id={id} type={visible ? "text" : "password"} autoComplete={auto} value={value} onChange={(e) => { set(e.target.value); clear(); }} onFocus={() => id === "password" && setFocusPw(true)} onBlur={() => { touch(id); if (id === "password") setFocusPw(false); }} aria-invalid={!!show(id)} placeholder={mode === "up" && id === "password" ? "Tối thiểu 8 ký tự, gồm chữ và số" : "••••••••"} className={`${inputCls(!!show(id))} pr-11`} />
+        <Input id={id} type={visible ? "text" : "password"} enterKeyHint="go" autoComplete={auto} value={value} onChange={(e) => { set(e.target.value); clear(); }} onFocus={() => id === "password" && setFocusPw(true)} onBlur={() => { touch(id); if (id === "password") setFocusPw(false); }} aria-invalid={!!show(id)} placeholder={mode === "up" && id === "password" ? "Tối thiểu 8 ký tự, gồm chữ và số" : "••••••••"} className={`${inputCls(!!show(id))} pr-11`} />
         <button type="button" onClick={toggle} aria-label={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"} className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background">{visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button>
       </div>
     </Field>
   );
 
+  const googleButton = (cls: string) => (
+    <button type="button" onClick={google} disabled={gLoading} className={`${cls} flex h-12 w-full items-center justify-center gap-3 rounded-2xl border bg-card text-sm font-semibold transition hover:bg-muted disabled:opacity-60`}>
+      {gLoading ? <Loader2 className="size-5 animate-spin" /> : (
+        <svg viewBox="0 0 48 48" className="size-5" aria-hidden><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" /><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" /><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" /><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" /></svg>
+      )}
+      Tiếp tục với Google
+    </button>
+  );
+  const orDivider = (cls: string, label: string) => (
+    <div className={`${cls} flex items-center gap-3 text-xs text-muted-foreground`}><span className="h-px flex-1 bg-border" />{label}<span className="h-px flex-1 bg-border" /></div>
+  );
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:max-w-none lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
-      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative aspect-[7/5] w-full shrink-0 overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:aspect-auto lg:min-h-[calc(100dvh-2rem)]">
-        <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} className="absolute inset-x-0 -bottom-[10%] h-[110%] w-full lg:inset-0 lg:h-full" />
+      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className={`relative w-full shrink-0 overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl [--w:calc(min(100vw,28rem)-2rem)] transition-[height] duration-500 ease-[cubic-bezier(.32,.72,0,1)] lg:h-auto lg:min-h-[calc(100dvh-2rem)] ${mode === "in" ? "h-[calc(var(--w)/1.4)]" : "h-[8.5rem]"}`}>
+        <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} progress={progress} className={`absolute left-0 aspect-[400/460] w-full transition-[top] duration-500 ease-[cubic-bezier(.32,.72,0,1)] lg:inset-x-0 lg:top-0 lg:aspect-auto lg:h-[70%] lg:transition-none lg:[-webkit-mask-image:linear-gradient(to_bottom,#000_88%,transparent)] lg:[mask-image:linear-gradient(to_bottom,#000_88%,transparent)] ${mode === "in" ? "top-[calc(var(--w)*-0.365)]" : "top-[calc(4.25rem-var(--w)*0.59)]"}`} />
         <span className="absolute left-0 top-0 whitespace-nowrap rounded-br-3xl bg-black/35 px-4 py-2 text-[11px] font-bold tracking-widest text-white backdrop-blur lg:px-5 lg:py-2.5 lg:text-xs">TIẾT KIỆM ĐƠN GIẢN</span>
         <div className="absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-6 pb-5 pt-16 text-white lg:block lg:px-8 lg:pb-7">
           <p className="text-xs font-bold tracking-widest text-emerald-300">BẮT ĐẦU MIỄN PHÍ</p>
@@ -189,8 +216,8 @@ function AuthPage() {
       <div className="flex flex-1 items-center justify-center px-1 py-4 lg:px-6 lg:py-4">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="lg:hidden"><Logo size={40} /></div>
-            <h1 className="mt-2.5 text-2xl font-extrabold tracking-tight lg:mt-0 lg:text-3xl">{mode === "in" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
+            {mode === "in" && <div className="lg:hidden"><Logo size={40} /></div>}
+            <h1 className={`${mode === "in" ? "mt-2.5" : "mt-0"} text-2xl font-extrabold tracking-tight lg:mt-0 lg:text-3xl`}>{mode === "in" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{mode === "in" ? "Đăng nhập để tiếp tục quản lý tài chính" : "Chỉ mất chưa đến một phút"}</p>
           </div>
           <div className="mt-5 grid grid-cols-2 rounded-2xl bg-muted p-1 text-sm font-medium">
@@ -198,30 +225,19 @@ function AuthPage() {
               <button key={m} type="button" onClick={() => { setMode(m); setTouched({}); clear(); }} className={`rounded-xl py-2 transition-colors ${mode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>{m === "in" ? "Đăng nhập" : "Đăng ký"}</button>
             ))}
           </div>
-          <button type="button" onClick={google} disabled={gLoading} className="mt-5 flex h-12 w-full items-center justify-center gap-3 rounded-2xl border bg-card text-sm font-semibold transition hover:bg-muted disabled:opacity-60">
-            {gLoading ? <Loader2 className="size-5 animate-spin" /> : (
-              <svg viewBox="0 0 48 48" className="size-5" aria-hidden><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" /><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" /><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" /><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" /></svg>
-            )}
-            Tiếp tục với Google
-          </button>
-          <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />hoặc dùng email<span className="h-px flex-1 bg-border" /></div>
-          <form onSubmit={submit} noValidate className="mt-4 space-y-3.5">
+          {mode === "in" && <>{googleButton("mt-5")}{orDivider("mt-4", "hoặc dùng email")}</>}
+          <form onSubmit={submit} noValidate onFocusCapture={(e) => { const t = e.target as HTMLElement; if (t.tagName === "INPUT") window.setTimeout(() => t.scrollIntoView({ block: "center", behavior: "smooth" }), 350); }} className={`${mode === "in" ? "mt-4" : "mt-5"} space-y-3.5`}>
             {mode === "up" && (
               <Field id="name" label="Họ và tên" error={show("name")}>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => touch("name")} aria-invalid={!!show("name")} placeholder="Nguyễn Văn A" maxLength={60} className={inputCls(!!show("name"))} />
+                <Input id="name" enterKeyHint="next" autoComplete="name" autoCapitalize="words" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => touch("name")} aria-invalid={!!show("name")} placeholder="Nguyễn Văn A" maxLength={60} className={inputCls(!!show("name"))} />
               </Field>
             )}
             <Field id="email" label="Email" error={show("email")}>
-              <Input id="email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); clear(); }} onBlur={() => touch("email")} aria-invalid={!!show("email")} placeholder="ban@gmail.com" className={inputCls(!!show("email"))} />
+              <Input id="email" type="email" enterKeyHint="next" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); clear(); }} onBlur={() => touch("email")} aria-invalid={!!show("email")} placeholder="ban@gmail.com" className={inputCls(!!show("email"))} />
               {hint && <button type="button" onClick={() => setEmail(hint)} className="text-xs font-medium text-amber-600 underline">Ý bạn là {hint}?</button>}
             </Field>
             {pwField("password", "Mật khẩu", password, setPassword, showPw, () => setShowPw((v) => !v), mode === "in" ? "current-password" : "new-password")}
-            {mode === "up" && password && (
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                {pwRules(password).map((r) => <li key={r.label} className={`flex items-center gap-1 ${r.ok ? "text-primary" : "text-destructive"}`}>{r.ok ? <Check className="size-3.5" /> : <AlertCircle className="size-3.5" />}{r.label}</li>)}
-              </ul>
-            )}
-            {mode === "up" && pwField("confirm", "Nhập lại mật khẩu", confirm, setConfirm, showPw2, () => setShowPw2((v) => !v), "new-password")}
+            {mode === "up" && password && <PasswordMeter password={password} />}
             {serverErr && serverErr.field !== "email" && (
               <div role="alert" className="flex items-start gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm font-medium text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{serverErr.message}</div>
             )}
@@ -230,6 +246,7 @@ function AuthPage() {
               {mode === "in" ? "Đăng nhập" : "Tạo tài khoản & vào ngay"}
             </Button>
           </form>
+          {mode === "up" && <>{orDivider("mt-5", "hoặc")}{googleButton("mt-4")}</>}
         </div>
       </div>
     </div>
