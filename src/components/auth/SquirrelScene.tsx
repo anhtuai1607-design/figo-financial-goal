@@ -10,6 +10,7 @@ const CSS = `
 .sq-paws{transition:transform .35s cubic-bezier(.3,1.3,.5,1),opacity .25s}
 .sq-happy{animation:sq-jump .6s ease-in-out 2}
 .sq-sad{animation:sq-shake .5s ease-in-out 2}
+@media (max-width:1023.98px){.sq-hide-sm{display:none}}
 @keyframes sq-sway{from{transform:rotate(-4deg)}to{transform:rotate(6deg)}}
 @keyframes sq-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
 @keyframes sq-bob{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
@@ -21,13 +22,13 @@ const CSS = `
 `;
 
 /** Nhân vật sóc nhặt hạt vàng (vẽ bằng SVG, có chuyển động). px/py: vị trí con trỏ từ -1 đến 1 để tạo hiệu ứng nghiêng. */
-export function SquirrelScene({ mood, px = 0, py = 0 }: { mood: SquirrelMood; px?: number; py?: number }) {
+export function SquirrelScene({ mood, px = 0, py = 0, className = "absolute inset-0 size-full" }: { mood: SquirrelMood; px?: number; py?: number; className?: string }) {
   const far = { transform: `translate(${px * -6}px, ${py * -4}px)`, transition: "transform .2s" };
   const near = { transform: `translate(${px * 9}px, ${py * 6}px)`, transition: "transform .2s" };
   const happy = mood === "happy";
   const sad = mood === "sad";
   return (
-    <svg viewBox="0 0 400 460" preserveAspectRatio="xMidYMax slice" className="absolute inset-0 size-full" role="img" aria-label="Chú sóc đang nhặt hạt vàng bỏ vào hũ tiết kiệm">
+    <svg viewBox="0 0 400 460" preserveAspectRatio="xMidYMax slice" className={className} role="img" aria-label="Chú sóc đang nhặt hạt vàng bỏ vào hũ tiết kiệm">
       <style>{CSS}</style>
       <defs>
         <linearGradient id="sq-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0a3326" /><stop offset=".55" stopColor="#12714f" /><stop offset="1" stopColor="#35c08f" /></linearGradient>
@@ -36,14 +37,14 @@ export function SquirrelScene({ mood, px = 0, py = 0 }: { mood: SquirrelMood; px
       </defs>
       <rect width="400" height="460" fill="url(#sq-sky)" />
       <g style={far}>
-        <circle cx="300" cy="110" r="120" fill="url(#sq-moon)" /><circle cx="300" cy="110" r="46" fill="#fff3b0" />
+        <circle cx="300" cy="110" r="120" fill="url(#sq-moon)" /><circle className="sq-hide-sm" cx="300" cy="110" r="46" fill="#fff3b0" />
         {[[60, 60], [120, 120], [210, 50], [350, 200], [30, 190]].map(([x, y], i) => <circle key={i} className="sq-twinkle" style={{ animationDelay: `${i * 0.5}s` }} cx={x} cy={y} r="2.2" fill="#fff" />)}
         <path d="M-10 330 Q80 250 170 320 T400 300 L400 470 L-10 470Z" fill="#0f6a4a" opacity=".85" />
         {[[40, 300, 1], [352, 292, 1.15], [318, 310, .8]].map(([x, y, s], i) => <g key={i} transform={`translate(${x} ${y}) scale(${s})`}><path d="M0 -62 L24 -14 H-24Z M0 -42 L30 8 H-30Z M0 -22 L36 30 H-36Z" fill="#0a4d37" /><rect x="-4" y="30" width="8" height="14" fill="#06382a" /></g>)}
         <path d="M-10 380 Q120 330 230 372 T410 360 L410 470 L-10 470Z" fill="#17895f" />
       </g>
       <g style={near}>
-        <g className="sq-bob"><use href="#sq-coin" x="50" y="140" width="26" height="26" /></g>
+        <g className="sq-bob sq-hide-sm"><use href="#sq-coin" x="50" y="140" width="26" height="26" /></g>
         <g className="sq-bob2"><use href="#sq-coin" x="330" y="250" width="22" height="22" /></g>
         <g className="sq-bob2"><use href="#sq-coin" x="110" y="230" width="16" height="16" /></g>
         <g className="sq-bob"><use href="#sq-coin" x="300" y="60" width="18" height="18" /></g>

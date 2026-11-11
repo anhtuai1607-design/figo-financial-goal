@@ -53,7 +53,7 @@ function viError(msg: string) {
   return msg;
 }
 
-const inputCls = (bad: boolean) => `h-11 rounded-2xl bg-muted ${bad ? "border-destructive bg-destructive/5 focus-visible:ring-destructive/30" : ""}`;
+const inputCls = (bad: boolean) => `h-12 rounded-2xl bg-muted ${bad ? "border-destructive bg-destructive/5 focus-visible:ring-destructive/30" : ""}`;
 
 function Field({ id, label, error, children }: { id: string; label: string; error?: string | null; children: ReactNode }) {
   return (
@@ -170,11 +170,11 @@ function AuthPage() {
   );
 
   return (
-    <div className="grid min-h-dvh gap-4 p-3 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
-      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative min-h-[18rem] overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:min-h-[calc(100dvh-2rem)]">
-        <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} />
-        <span className="absolute left-0 top-0 rounded-br-3xl bg-black/35 px-5 py-2.5 text-xs font-bold tracking-widest text-white backdrop-blur">TIẾT KIỆM ĐƠN GIẢN</span>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-6 pb-5 pt-16 text-white lg:px-8 lg:pb-7">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:max-w-none lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
+      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative aspect-[7/5] w-full shrink-0 overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:aspect-auto lg:min-h-[calc(100dvh-2rem)]">
+        <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} className="absolute inset-x-0 -bottom-[10%] h-[110%] w-full lg:inset-0 lg:h-full" />
+        <span className="absolute left-0 top-0 whitespace-nowrap rounded-br-3xl bg-black/35 px-4 py-2 text-[11px] font-bold tracking-widest text-white backdrop-blur lg:px-5 lg:py-2.5 lg:text-xs">TIẾT KIỆM ĐƠN GIẢN</span>
+        <div className="absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-6 pb-5 pt-16 text-white lg:block lg:px-8 lg:pb-7">
           <p className="text-xs font-bold tracking-widest text-emerald-300">BẮT ĐẦU MIỄN PHÍ</p>
           <h2 className="mt-1 text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl">Gom từng hạt vàng,<br />thành mục tiêu lớn</h2>
           <p className="mt-2 hidden max-w-md text-sm text-white/75 lg:block">Ghi chi tiêu, đặt mục tiêu tiết kiệm và theo dõi mọi thứ trên một ứng dụng gọn gàng.</p>
@@ -186,11 +186,11 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-center px-1 py-4 lg:px-6">
+      <div className="flex flex-1 items-center justify-center px-1 py-4 lg:px-6 lg:py-4">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="lg:hidden"><Logo size={48} /></div>
-            <h1 className="mt-3 text-2xl font-extrabold tracking-tight lg:mt-0 lg:text-3xl">{mode === "in" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
+            <div className="lg:hidden"><Logo size={40} /></div>
+            <h1 className="mt-2.5 text-2xl font-extrabold tracking-tight lg:mt-0 lg:text-3xl">{mode === "in" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{mode === "in" ? "Đăng nhập để tiếp tục quản lý tài chính" : "Chỉ mất chưa đến một phút"}</p>
           </div>
           <div className="mt-5 grid grid-cols-2 rounded-2xl bg-muted p-1 text-sm font-medium">
@@ -212,7 +212,7 @@ function AuthPage() {
               </Field>
             )}
             <Field id="email" label="Email" error={show("email")}>
-              <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); clear(); }} onBlur={() => touch("email")} aria-invalid={!!show("email")} placeholder="ban@gmail.com" className={inputCls(!!show("email"))} />
+              <Input id="email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); clear(); }} onBlur={() => touch("email")} aria-invalid={!!show("email")} placeholder="ban@gmail.com" className={inputCls(!!show("email"))} />
               {hint && <button type="button" onClick={() => setEmail(hint)} className="text-xs font-medium text-amber-600 underline">Ý bạn là {hint}?</button>}
             </Field>
             {pwField("password", "Mật khẩu", password, setPassword, showPw, () => setShowPw((v) => !v), mode === "in" ? "current-password" : "new-password")}
