@@ -26,6 +26,16 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 
+// Dọn dữ liệu cũ từng lưu lâu dài trong trình duyệt (phiên đăng nhập, bản sao thu chi, lịch sử chat).
+function cleanLegacyStorage() {
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('sb-') || k === 'figo-v1' || k === 'figo_assistant_sessions_v1') localStorage.removeItem(k);
+    }
+  } catch { /* bỏ qua */ }
+}
+if (typeof window !== 'undefined') cleanLegacyStorage();
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
@@ -48,6 +58,8 @@ function createSupabaseClient() {
     },
     auth: {
       persistSession: true,
+      // Chỉ lưu trong tab hiện tại: đóng tab là mất đăng nhập (kiểu ngân hàng).
+      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
       autoRefreshToken: true,
       detectSessionInUrl: true,
       flowType: 'pkce',

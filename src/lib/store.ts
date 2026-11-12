@@ -196,7 +196,7 @@ export const useFiGo = create<FiGoState>()(
     }),
     {
       name: "figo-v1",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,
       partialize: (s) => ({
         userName: s.userName,

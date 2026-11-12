@@ -9,6 +9,7 @@ import { useUI } from "@/lib/ui-store";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { TransactionSheet } from "@/components/transactions/TransactionSheet";
+import { SessionGuard, clearActivityMark } from "@/components/auth/SessionGuard";
 import { BillReminderWatcher } from "@/components/bills/BillReminderWatcher";
 import { Button } from "@/components/ui/button";
 import { AccountMenu, NotificationBell } from "./TopBar";
@@ -31,7 +32,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
+    clearActivityMark();
     useFiGo.setState({ hydrated: false });
     useFiGo.getState().resetAll();
     toast.success("Đã đăng xuất");
@@ -145,6 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <TransactionSheet />
+      <SessionGuard />
       {hydrated && <BillReminderWatcher />}
     </div>
   );
