@@ -317,3 +317,9 @@ html {
     cursor: not-allowed;
   }
 }
+
+/* Chữ mượt và gọn như iOS */
+@layer base {
+  body { -webkit-font-smoothing: antialiased; letter-spacing: -0.011em; }
+  h1, h2, h3 { letter-spacing: -0.02em; }
+}

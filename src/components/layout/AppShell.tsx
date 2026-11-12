@@ -1,9 +1,9 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, CalendarClock, Target, Plus, Settings, Moon, Sun, Wallet, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PiggyBank, CalendarClock, Target, Plus, Settings, Moon, Sun, Wallet, LogOut, Sparkles, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useFiGo } from "@/lib/store";
 import { useUI } from "@/lib/ui-store";
 import { useTheme } from "@/lib/theme";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { BillReminderWatcher } from "@/components/bills/BillReminderWatcher";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AccountMenu, NotificationBell } from "./TopBar";
 
 const NAV = [
@@ -29,6 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const navigate = useNavigate();
+  const [more, setMore] = useState(false);
+  const moreActive = ["/budgets", "/goals", "/settings"].includes(pathname);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -131,18 +134,48 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav: thanh kính bo tròn + nút thêm riêng, giống iPhone */}
       <nav className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:hidden">
-        <div className="relative mx-auto grid max-w-lg grid-cols-5 items-center rounded-[1.75rem] border bg-card/80 px-1 py-2 shadow-glass backdrop-blur-2xl">
-          {NAV.slice(0, 2).map((n) => (
-            <NavItem key={n.to} {...n} active={pathname === n.to} />
-          ))}
-          <button onClick={() => openTxSheet()} aria-label="Thêm giao dịch" className="mx-auto flex size-12 items-center justify-center rounded-full gradient-primary text-primary-foreground shadow-glow active:scale-95"><Plus className="size-6" /></button>
-          {[NAV[3], NAV[5]].map((n) => (
-            <NavItem key={n.to} {...n} active={pathname === n.to} />
-          ))}
+        <div className="mx-auto flex max-w-lg items-center gap-2.5">
+          <div className="grid flex-1 grid-cols-5 rounded-full border border-white/50 bg-card/75 p-1.5 shadow-glass backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10">
+            {[NAV[0], NAV[1], NAV[3], NAV[5]].map((n) => (
+              <NavItem key={n.to} {...n} active={pathname === n.to} />
+            ))}
+            <button type="button" onClick={() => setMore(true)} aria-label="Menu khác" className={cn("relative flex min-w-0 flex-col items-center gap-0.5 rounded-full py-1.5 text-[10px] font-medium transition-colors", moreActive ? "text-primary" : "text-muted-foreground")}>
+              {moreActive && <span className="absolute inset-0 rounded-full bg-primary/10" />}
+              <MoreHorizontal className="relative z-10 size-[22px]" strokeWidth={moreActive ? 2.2 : 1.8} />
+              <span className="relative z-10">Khác</span>
+            </button>
+          </div>
+          <button type="button" onClick={() => openTxSheet()} aria-label="Thêm giao dịch" className="flex size-14 shrink-0 items-center justify-center rounded-full gradient-primary text-primary-foreground shadow-glow transition active:scale-95"><Plus className="size-7" /></button>
         </div>
       </nav>
+
+      <Sheet open={more} onOpenChange={setMore}>
+        <SheetContent side="bottom" className="rounded-t-[2rem] px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 lg:hidden">
+          <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+          <SheetHeader className="p-0 text-left"><SheetTitle className="px-1 text-xl">Khác</SheetTitle><SheetDescription className="sr-only">Các mục khác của FiGo</SheetDescription></SheetHeader>
+          <div className="mt-3 divide-y divide-border/60 overflow-hidden rounded-2xl bg-muted/50">
+            {[{ to: "/budgets", label: "Ngân sách", icon: PiggyBank }, { to: "/goals", label: "Mục tiêu tiết kiệm", icon: Target }, { to: "/settings", label: "Tài khoản & Cài đặt", icon: Settings }].map((item) => (
+              <Link key={item.to} to={item.to} onClick={() => setMore(false)} className="flex items-center gap-3 px-4 py-3.5 active:bg-muted">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><item.icon className="size-[18px]" /></span>
+                <span className="flex-1 font-medium">{item.label}</span>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+          <div className="mt-3 divide-y divide-border/60 overflow-hidden rounded-2xl bg-muted/50">
+            <button type="button" onClick={() => { toggle(); setMore(false); }} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-muted">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}</span>
+              <span className="flex-1 font-medium">{theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}</span>
+            </button>
+            <button type="button" onClick={() => { setMore(false); void signOut(); }} className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-destructive active:bg-muted">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-destructive/10"><LogOut className="size-[18px]" /></span>
+              <span className="flex-1 font-medium">Đăng xuất</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <TransactionSheet />
       {hydrated && <BillReminderWatcher />}
@@ -152,10 +185,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function NavItem({ to, label, icon: Icon, active }: { to: string; label: string; icon: typeof LayoutDashboard; active: boolean }) {
   return (
-    <Link to={to} aria-current={active ? "page" : undefined} className={cn("relative flex min-w-0 flex-col items-center gap-1 rounded-lg py-1.5 text-[10px] font-medium transition-colors", active ? "text-primary" : "text-muted-foreground")}>
-      {active && <motion.span layoutId="bottom-active" className="absolute inset-x-1 top-0 h-full rounded-lg bg-accent" transition={{ type: "spring", stiffness: 400, damping: 30 }} />}
-      <Icon className="relative z-10 size-5" />
-      <span className="relative z-10">{label}</span>
+    <Link to={to} aria-current={active ? "page" : undefined} className={cn("relative flex min-w-0 flex-col items-center gap-0.5 rounded-full py-1.5 text-[10px] font-medium transition-colors", active ? "text-primary" : "text-muted-foreground")}>
+      {active && <motion.span layoutId="bottom-active" className="absolute inset-0 rounded-full bg-primary/10" transition={{ type: "spring", stiffness: 400, damping: 30 }} />}
+      <Icon className="relative z-10 size-[22px]" strokeWidth={active ? 2.2 : 1.8} />
+      <span className="relative z-10 truncate">{label}</span>
     </Link>
   );
 }

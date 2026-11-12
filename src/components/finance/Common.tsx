@@ -10,8 +10,8 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <header className="mb-6 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
       <div className="min-w-0">
-        <h1 className="break-words text-2xl font-extrabold text-foreground sm:text-3xl">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        <h1 className="break-words text-[1.75rem] font-bold leading-tight tracking-tight text-foreground sm:text-3xl">{title}</h1>
+        <p className="mt-1 text-[15px] text-muted-foreground">{subtitle}</p>
       </div>
       {action}
     </header>
@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 }
 
 export function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cn("min-w-0 rounded-lg border bg-card p-4 shadow-sm sm:p-5", className)}>{children}</section>;
+  return <section className={cn("min-w-0 rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-20px_rgba(15,23,42,0.22)] sm:p-6", className)}>{children}</section>;
 }
 
 export function EmptyState({ title, text }: { title: string; text: string }) {
@@ -41,9 +41,9 @@ export function TransactionRow({ tx, account, onClick }: { tx: Transaction; acco
       type="button"
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-muted/70"
+      className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-3 text-left transition-colors hover:bg-muted/70"
     >
-      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", tx.type === "income" ? "bg-accent text-income" : tx.type === "expense" ? "bg-secondary text-expense" : "bg-muted text-primary")}>
+      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl", tx.type === "income" ? "bg-accent text-income" : tx.type === "expense" ? "bg-secondary text-expense" : "bg-muted text-primary")}>
         <Icon className="size-[18px]" />
       </span>
       <span className="min-w-0 flex-1">
