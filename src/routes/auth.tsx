@@ -170,14 +170,14 @@ function AuthPage() {
   );
 
   return (
-    <div className="grid min-h-dvh gap-4 p-3 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
+    <div className="grid min-h-dvh gap-4 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
       <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative min-h-[18rem] overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:min-h-[calc(100dvh-2rem)]">
         <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} />
-        <span className="absolute left-0 top-0 rounded-br-3xl bg-black/35 px-5 py-2.5 text-xs font-bold tracking-widest text-white backdrop-blur">TIẾT KIỆM ĐƠN GIẢN</span>
+        <span className="absolute left-0 top-0 rounded-br-3xl bg-black/35 px-5 py-2.5 text-xs font-bold tracking-widest text-white backdrop-blur">QUẢN LÝ TÀI CHÍNH</span>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-6 pb-5 pt-16 text-white lg:px-8 lg:pb-7">
-          <p className="text-xs font-bold tracking-widest text-emerald-300">BẮT ĐẦU MIỄN PHÍ</p>
-          <h2 className="mt-1 text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl">Gom từng hạt vàng,<br />thành mục tiêu lớn</h2>
-          <p className="mt-2 hidden max-w-md text-sm text-white/75 lg:block">Ghi chi tiêu, đặt mục tiêu tiết kiệm và theo dõi mọi thứ trên một ứng dụng gọn gàng.</p>
+          <p className="text-xs font-bold tracking-widest text-emerald-300">ĐƠN GIẢN, RÕ RÀNG</p>
+          <h2 className="mt-1 text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl">Mọi khoản thu chi,<br />rõ ràng trong tầm tay</h2>
+          <p className="mt-2 hidden max-w-md text-sm text-white/75 lg:block">Ghi thu chi, đặt ngân sách, theo dõi hoá đơn và mục tiêu tiết kiệm, tất cả trong một ứng dụng gọn gàng.</p>
           <div className="mt-4 hidden items-center gap-3 rounded-2xl bg-white/10 p-3 backdrop-blur lg:flex">
             <Logo size={44} />
             <div className="min-w-0 flex-1"><p className="truncate font-bold">FiGo: Finance & Goal</p><p className="truncate text-xs text-white/70">Quản lý thu chi, ngân sách, mục tiêu</p></div>
@@ -189,7 +189,7 @@ function AuthPage() {
       <div className="flex items-center justify-center px-1 py-4 lg:px-6">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="lg:hidden"><Logo size={48} /></div>
+            <Logo size={52} />
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight lg:mt-0 lg:text-3xl">{mode === "in" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{mode === "in" ? "Đăng nhập để tiếp tục quản lý tài chính" : "Chỉ mất chưa đến một phút"}</p>
           </div>

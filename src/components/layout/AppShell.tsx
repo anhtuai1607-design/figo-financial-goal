@@ -164,11 +164,7 @@ function NavItem({ to, label, icon: Icon, active }: { to: string; label: string;
 }
 
 export function Logo({ size = 36 }: { size?: number }) {
-  return (
-    <div className="flex items-center justify-center rounded-xl gradient-primary text-primary-foreground shadow-glow" style={{ width: size, height: size }}>
-      <Wallet style={{ width: size * 0.55, height: size * 0.55 }} />
-    </div>
-  );
+  return <img src="/logo.png" alt="FiGo" width={size} height={size} decoding="async" className="shrink-0 rounded-[22%] shadow-glow" style={{ width: size, height: size }} />;
 }
 
 export function Splash() {
