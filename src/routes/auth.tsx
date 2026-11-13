@@ -171,7 +171,7 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-dvh gap-4 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:p-4">
-      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative min-h-[18rem] overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:min-h-[calc(100dvh-2rem)]">
+      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className="relative min-h-[25rem] overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:min-h-[calc(100dvh-2rem)]">
         <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} />
         <span className="absolute left-0 top-0 rounded-br-3xl bg-black/35 px-5 py-2.5 text-xs font-bold tracking-widest text-white backdrop-blur">QUẢN LÝ TÀI CHÍNH</span>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-6 pb-5 pt-16 text-white lg:px-8 lg:pb-7">
