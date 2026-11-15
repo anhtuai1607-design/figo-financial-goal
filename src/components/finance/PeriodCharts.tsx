@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Area, Cell, ComposedChart, CartesianGrid, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, Cell, ComposedChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Panel } from "@/components/finance/Common";
 import { Button } from "@/components/ui/button";
 import { formatVnd } from "@/lib/format";
@@ -10,9 +10,22 @@ import type { Bill, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const MODES: { key: PeriodMode; label: string }[] = [{ key: "day", label: "Ngày" }, { key: "week", label: "Tuần" }, { key: "month", label: "Tháng" }, { key: "year", label: "Năm" }];
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--muted-foreground)"];
+const sliceColor = (hue: number | null) => (hue === null ? "oklch(0.7 0.02 260)" : `oklch(0.68 0.16 ${hue})`);
 const tickMoney = (v: number) => (v >= 1_000_000 ? `${Math.round((v / 1_000_000) * 10) / 10}tr` : v >= 1_000 ? `${Math.round(v / 1_000)}k` : String(v));
 const tip = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 };
+function TrendTip({ active, payload, label }: { active?: boolean; payload?: { name?: string; value?: number; color?: string; dataKey?: string }[]; label?: string }) {
+  const rows = (payload ?? []).filter((p) => Number(p.value) > 0);
+  if (!active || rows.length === 0) return null;
+  return (
+    <div className="rounded-xl border bg-popover px-3 py-2 text-xs shadow-lg">
+      <p className="mb-1 font-semibold">{label}</p>
+      {rows.map((p) => (
+        <p key={p.dataKey} className="flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: p.color }} /><span className="text-muted-foreground">{p.name}</span><span className="ml-auto pl-3 font-semibold tabular-nums">{formatVnd(Number(p.value))}</span></p>
+      ))}
+    </div>
+  );
+}
+
 const prevWord: Record<PeriodMode, string> = { day: "hôm trước", week: "tuần trước", month: "tháng trước", year: "năm trước" };
 
 /** Biểu đồ xu hướng + cơ cấu: xem theo ngày, tuần, tháng, năm; lùi về quá khứ hoặc xem trước tương lai. */
@@ -65,21 +78,22 @@ export function PeriodCharts({ txs, bills }: { txs: Transaction[]; bills: Bill[]
           </p>
           <div className="relative mt-3 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data} margin={{ left: -12, right: 8, top: 4 }}>
-                <defs>
-                  <linearGradient id="pcIncome" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} /></linearGradient>
-                  <linearGradient id="pcExpense" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.28} /><stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} /></linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} minTickGap={mode === "month" ? 14 : 4} interval="preserveStartEnd" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={tickMoney} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
-                <Tooltip formatter={(v) => formatVnd(Number(v))} contentStyle={tip} />
-                <Area type="monotone" dataKey="income" name="Thu" stroke="var(--chart-1)" fill="url(#pcIncome)" strokeWidth={2.5} />
-                <Area type="monotone" dataKey="expense" name="Chi" stroke="var(--chart-2)" fill="url(#pcExpense)" strokeWidth={2.5} />
-                {planned > 0 && <Line type="monotone" dataKey="planned" name="Hoá đơn dự kiến" stroke="var(--chart-2)" strokeDasharray="5 4" strokeWidth={2} dot={false} />}
+              <ComposedChart data={data} margin={{ left: -10, right: 4, top: 8 }} barCategoryGap={mode === "month" || mode === "day" ? "12%" : "30%"} barGap={3}>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} interval={mode === "month" ? 4 : mode === "day" ? 2 : 0} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} width={46} tickCount={4} tickFormatter={tickMoney} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                <Tooltip cursor={{ fill: "var(--muted)", opacity: 0.55, radius: 8 }} content={<TrendTip />} />
+                <Bar dataKey="income" name="Thu" fill="var(--chart-1)" radius={[6, 6, 0, 0]} maxBarSize={mode === "year" ? 16 : mode === "week" ? 20 : 9} />
+                <Bar dataKey="expense" name="Chi" fill="var(--chart-2)" radius={[6, 6, 0, 0]} maxBarSize={mode === "year" ? 16 : mode === "week" ? 20 : 9} />
+                {planned > 0 && <Bar dataKey="planned" name="Hoá đơn dự kiến" fill="var(--chart-2)" fillOpacity={0.18} stroke="var(--chart-2)" strokeDasharray="4 3" radius={[6, 6, 0, 0]} maxBarSize={mode === "year" ? 16 : mode === "week" ? 20 : 9} />}
               </ComposedChart>
             </ResponsiveContainer>
             {empty && <div className="pointer-events-none absolute inset-0 flex items-center justify-center"><p className="rounded-xl bg-background/90 px-4 py-2 text-sm text-muted-foreground">{future ? "Kỳ này ở tương lai, chưa có dữ liệu." : "Chưa có giao dịch trong kỳ này."}</p></div>}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "var(--chart-1)" }} />Thu</span>
+            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "var(--chart-2)" }} />Chi</span>
+            {planned > 0 && <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full border border-dashed" style={{ borderColor: "var(--chart-2)" }} />Hoá đơn dự kiến</span>}
           </div>
         </Panel>
 
@@ -92,24 +106,27 @@ export function PeriodCharts({ txs, bills }: { txs: Transaction[]; bills: Bill[]
           </div>
           {bd.rows.length ? (
             <>
-              <div className="relative mt-2 h-48">
+              <div className="relative mt-3 h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={bd.rows} dataKey="amount" nameKey="name" innerRadius={58} outerRadius={84} paddingAngle={3} stroke="none">
-                      {bd.rows.map((r, i) => <Cell key={r.id} fill={COLORS[i % COLORS.length]} />)}
+                    <Pie data={bd.rows} dataKey="amount" nameKey="name" innerRadius={60} outerRadius={84} paddingAngle={bd.rows.length > 1 ? 3 : 0} cornerRadius={8} startAngle={90} endAngle={-270} stroke="none">
+                      {bd.rows.map((r) => <Cell key={r.id} fill={sliceColor(r.hue)} />)}
                     </Pie>
                     <Tooltip formatter={(v) => formatVnd(Number(v))} contentStyle={tip} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-[11px] text-muted-foreground">Tổng</span><span className="text-sm font-bold tabular-nums">{formatVnd(bd.total)}</span></div>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-[11px] text-muted-foreground">Tổng {kind === "expense" ? "chi" : "thu"}</span><span className="text-base font-bold tabular-nums">{formatVnd(bd.total)}</span></div>
               </div>
-              <div className="mt-2 space-y-2">
-                {bd.rows.map((r, i) => (
-                  <div key={r.id} className="flex items-center gap-2 text-xs">
-                    <span className="size-2 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="flex-1 truncate text-muted-foreground">{r.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{formatVnd(r.amount)}</span>
-                    <strong className="w-12 text-right tabular-nums">{r.pct}%</strong>
+              <div className="mt-3 space-y-3">
+                {bd.rows.map((r) => (
+                  <div key={r.id} className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: sliceColor(r.hue) }} />
+                      <span className="flex-1 truncate font-medium">{r.name}</span>
+                      <span className="tabular-nums text-muted-foreground">{formatVnd(r.amount)}</span>
+                      <strong className="w-12 text-right tabular-nums">{r.pct}%</strong>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${r.pct}%`, background: sliceColor(r.hue) }} /></div>
                   </div>
                 ))}
               </div>

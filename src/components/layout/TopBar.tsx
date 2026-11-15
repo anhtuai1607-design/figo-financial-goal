@@ -13,6 +13,8 @@ import { activeBudgets, billStatus, budgetProgress, goalStats } from "@/lib/fina
 import { formatVnd, monthKey } from "@/lib/format";
 import { getCategory } from "@/lib/categories";
 import { useFiGo } from "@/lib/store";
+import { billAlerts } from "@/lib/reminders";
+import { format } from "date-fns";
 import { useTheme } from "@/lib/theme";
 
 function useNotifications() {
@@ -21,10 +23,8 @@ function useNotifications() {
   const goals = useFiGo((s) => s.goals);
   const txs = useFiGo((s) => s.transactions);
   const items: { id: string; kind: "bill" | "budget" | "goal"; title: string; detail: string; billId?: string; danger?: boolean }[] = [];
-  for (const b of bills) {
-    if (!b.reminder) continue;
-    const st = billStatus(b);
-    if (st.overdue || (!st.paid && st.daysLeft <= 5)) items.push({ id: "b" + b.id, kind: "bill", billId: b.id, danger: st.overdue, title: b.name, detail: `${formatVnd(b.amount)} · ${st.overdue ? `quá hạn ${-st.daysLeft} ngày` : st.daysLeft === 0 ? "đến hạn hôm nay" : `còn ${st.daysLeft} ngày`}` });
+  for (const a of billAlerts(bills)) {
+    items.push({ id: "b" + a.bill.id, kind: "bill", billId: a.bill.id, danger: a.overdue, title: a.bill.name, detail: `${formatVnd(a.bill.amount)} · ${a.overdue ? `quá hạn ${-a.daysLeft} ngày` : a.daysLeft === 0 ? "đến hạn hôm nay" : `còn ${a.daysLeft} ngày (${format(a.due, "dd/MM")})`}` });
   }
   for (const b of activeBudgets(budgets)) {
     const p = budgetProgress(b, txs);

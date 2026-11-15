@@ -74,9 +74,9 @@ export function breakdownFor(txs: Transaction[], start: Date, end: Date, type: "
     map.set(t.categoryId, (map.get(t.categoryId) ?? 0) + t.amount);
   }
   const total = [...map.values()].reduce((x, y) => x + y, 0);
-  const rows = [...map.entries()].map(([id, amount]) => ({ id, name: getCategory(id).name, amount })).sort((x, y) => y.amount - x.amount);
+  const rows = [...map.entries()].map(([id, amount]) => ({ id, name: getCategory(id).name, amount, hue: getCategory(id).hue as number | null })).sort((x, y) => y.amount - x.amount);
   const top = rows.slice(0, 5);
   const rest = rows.slice(5).reduce((x, r) => x + r.amount, 0);
-  if (rest > 0) top.push({ id: "_other", name: "Khác", amount: rest });
+  if (rest > 0) top.push({ id: "_other", name: "Khác", amount: rest, hue: null });
   return { total, rows: top.map((r) => ({ ...r, pct: total ? Math.round((r.amount / total) * 1000) / 10 : 0 })) };
 }
