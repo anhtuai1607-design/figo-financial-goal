@@ -105,7 +105,7 @@ function AuthPage() {
   async function google() {
     clear();
     setGLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth`, queryParams: { prompt: "select_account" } } });
     if (error) {
       setServerErr({ field: "form", message: /not enabled|unsupported provider/i.test(error.message) ? "Đăng nhập bằng Google chưa được bật cho ứng dụng này" : viError(error.message) });
       setGLoading(false);
