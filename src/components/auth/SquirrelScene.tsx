@@ -32,18 +32,18 @@ export function SquirrelScene({ mood, px = 0, py = 0 }: { mood: SquirrelMood; px
   const happy = mood === "happy";
   const sad = mood === "sad";
   return (
-    <svg viewBox="0 0 400 460" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full" role="img" aria-label="Chú sóc cầm tiền mặt bỏ vào chiếc ví FiGo, bên cạnh là các nhãn thu nhập, chi tiêu và mục tiêu">
+    <svg viewBox="0 0 400 460" preserveAspectRatio="xMidYMid slice" className="absolute left-1/2 top-0 aspect-[400/460] h-full -translate-x-1/2 overflow-visible lg:inset-0 lg:left-0 lg:aspect-auto lg:size-full lg:translate-x-0" role="img" aria-label="Chú sóc cầm tiền mặt bỏ vào chiếc ví FiGo, bên cạnh là các nhãn thu nhập, chi tiêu và mục tiêu">
       <style>{CSS}</style>
       <defs>
         <linearGradient id="sq-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0a3326" /><stop offset=".55" stopColor="#12714f" /><stop offset="1" stopColor="#35c08f" /></linearGradient>
         <symbol id="sq-coin" viewBox="-20 -20 40 40"><circle r="18" fill="#f7c948" stroke="#d99a1e" strokeWidth="3" /><circle r="12" fill="none" stroke="#e8ab2a" strokeWidth="2" /><text y="5" textAnchor="middle" fontSize="15" fontWeight="800" fill="#c07d12" fontFamily="system-ui,sans-serif">₫</text></symbol>
         <symbol id="sq-note" viewBox="0 0 60 32"><rect x="1" y="1" width="58" height="30" rx="5" fill="#d9f5e6" stroke="#2e9e6b" strokeWidth="2" /><rect x="5" y="5" width="50" height="22" rx="3" fill="none" stroke="#2e9e6b" strokeWidth="1" opacity=".5" /><circle cx="30" cy="16" r="8" fill="#2e9e6b" fillOpacity=".18" stroke="#2e9e6b" strokeWidth="1.5" /><text x="30" y="20.5" textAnchor="middle" fontSize="11" fontWeight="800" fill="#1f7a53" fontFamily="system-ui,sans-serif">₫</text></symbol>
       </defs>
-      <rect width="400" height="460" fill="url(#sq-sky)" />
+      <rect x="-700" y="0" width="1800" height="460" fill="url(#sq-sky)" />
       <g style={far}>
         <circle cx="200" cy="200" r="170" fill="#fff" opacity=".07" />
-        <path d="M-10 300 Q80 250 170 290 T410 280 L410 470 L-10 470Z" fill="#0f6a4a" opacity=".9" />
-        <path d="M-10 322 Q120 290 230 318 T410 308 L410 470 L-10 470Z" fill="#17895f" />
+        <path d="M-700 300 L-10 300 Q80 250 170 290 T410 280 L1100 280 L1100 470 L-700 470Z" fill="#0f6a4a" opacity=".9" />
+        <path d="M-700 322 L-10 322 Q120 290 230 318 T410 308 L1100 308 L1100 470 L-700 470Z" fill="#17895f" />
       </g>
       <g style={near}>
         <Chip x={26} y={94} w={84} text="+ Thu nhập" bg="#e7fff3" fg="#0a7a52" cls="sq-bob" />
