@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/layout/AppShell";
 import { useFiGo } from "@/lib/store";
-import { SquirrelScene, type SquirrelMood } from "@/components/auth/SquirrelScene";
+import { SquirrelBanner, SquirrelScene, type SquirrelMood } from "@/components/auth/SquirrelScene";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -180,13 +180,18 @@ function AuthPage() {
     </Field>
   );
 
-  const showHero = mode === "in" && !kbOpen;
   const googleCls = mode === "up" ? "hidden lg:flex" : "flex";
 
   return (
-    <div className="flex h-dvh flex-col gap-3 overflow-y-auto p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:h-auto lg:min-h-dvh lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:overflow-visible lg:p-4">
-      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className={`relative min-h-[8.5rem] flex-1 overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:min-h-[calc(100dvh-2rem)] lg:flex-none lg:block ${showHero ? "block" : "hidden"}`}>
-        <SquirrelScene mood={mood} px={pointer.x} py={pointer.y} />
+    <div className="flex h-dvh flex-col justify-between gap-2 overflow-y-auto p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:h-auto lg:min-h-dvh lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:overflow-visible lg:p-4">
+      <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className={`relative h-[min(16rem,32dvh)] min-h-[9.5rem] shrink overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:block lg:h-auto lg:min-h-[calc(100dvh-2rem)] lg:shrink-0 ${kbOpen ? "hidden" : "block"}`}>
+        <div className="absolute inset-0 lg:hidden"><SquirrelBanner mood={mood} px={pointer.x} py={pointer.y} /></div>
+        <div className="absolute inset-0 hidden lg:block"><SquirrelScene mood={mood} px={pointer.x} py={pointer.y} /></div>
+        {/* iPhone: chữ tiêu đề bên trái banner */}
+        <div className="absolute inset-y-0 left-0 flex w-[58%] flex-col justify-center bg-gradient-to-r from-[#06261c]/90 via-[#06261c]/55 to-transparent pl-5 pr-1 text-white lg:hidden">
+          <p className="text-[10px] font-bold tracking-widest text-emerald-300">ĐƠN GIẢN, RÕ RÀNG</p>
+          <h2 className="mt-1 text-[1.2rem] font-extrabold leading-[1.15] tracking-tight">Mọi khoản thu chi,<br />rõ ràng trong<br />tầm tay</h2>
+        </div>
         <span className="absolute left-0 top-0 hidden rounded-br-3xl bg-black/35 px-5 py-2.5 text-xs font-bold tracking-widest text-white backdrop-blur lg:block">QUẢN LÝ TÀI CHÍNH</span>
         <div className="absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#06261c] via-[#06261c]/85 to-transparent px-8 pb-7 pt-16 text-white lg:block">
           <p className="text-xs font-bold tracking-widest text-emerald-300">ĐƠN GIẢN, RÕ RÀNG</p>
