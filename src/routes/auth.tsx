@@ -183,7 +183,7 @@ function AuthPage() {
   const googleCls = mode === "up" ? "hidden lg:flex" : "flex";
 
   return (
-    <div className="flex h-dvh flex-col justify-between gap-2 overflow-y-auto p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:h-auto lg:min-h-dvh lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:overflow-visible lg:p-4">
+    <div className="flex h-dvh flex-col gap-2 overflow-y-auto p-3 pb-0 pt-[max(0.75rem,env(safe-area-inset-top))] lg:grid lg:h-auto lg:min-h-dvh lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:overflow-visible lg:p-4">
       <div onPointerMove={onMove} onPointerLeave={() => setPointer({ x: 0, y: 0 })} className={`relative h-[min(16rem,32dvh)] min-h-[9.5rem] shrink overflow-hidden rounded-[2rem] bg-[#0a3326] shadow-2xl lg:block lg:h-auto lg:min-h-[calc(100dvh-2rem)] lg:shrink-0 ${kbOpen ? "hidden" : "block"}`}>
         <div className="absolute inset-0 lg:hidden"><SquirrelBanner mood={mood} px={pointer.x} py={pointer.y} /></div>
         <div className="absolute inset-0 hidden lg:block"><SquirrelScene mood={mood} px={pointer.x} py={pointer.y} /></div>
@@ -205,7 +205,7 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="flex shrink-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:px-6 lg:py-2">
+      <div className="flex flex-auto items-center py-3 lg:max-h-[calc(100dvh-2rem)] lg:flex-none lg:items-stretch lg:overflow-y-auto lg:px-6 lg:py-2">
         <div className="w-full max-w-sm px-1 lg:m-auto lg:px-0">
           <div className="flex items-center gap-3 lg:hidden">
             <Logo size={40} />
