@@ -1,4 +1,4 @@
-import { addDays, addMonths, addWeeks, addYears, eachDayOfInterval, endOfDay, endOfMonth, endOfWeek, endOfYear, format, getDay, getDaysInMonth, isWithinInterval, parseISO, startOfDay, startOfMonth, startOfWeek, startOfYear } from "date-fns";
+import { min as minDate, addDays, addMonths, addWeeks, addYears, eachDayOfInterval, endOfDay, endOfMonth, endOfWeek, endOfYear, format, getDay, getDaysInMonth, isWithinInterval, parseISO, startOfDay, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { vi } from "date-fns/locale";
 import { getCategory } from "./categories";
 import type { Bill, Transaction } from "./types";
@@ -79,4 +79,39 @@ export function breakdownFor(txs: Transaction[], start: Date, end: Date, type: "
   const rest = rows.slice(5).reduce((x, r) => x + r.amount, 0);
   if (rest > 0) top.push({ id: "_other", name: "Khác", amount: rest, hue: null });
   return { total, rows: top.map((r) => ({ ...r, pct: total ? Math.round((r.amount / total) * 1000) / 10 : 0 })) };
+}
+
+/**
+ * Dữ liệu cho biểu đồ đường: gom thành ít mốc để dễ đọc.
+ * Ngày: 6 khung 4 giờ · Tuần: 7 ngày · Tháng: các tuần trong tháng · Năm: 12 tháng.
+ * Mốc ở tương lai chỉ có "chi dự kiến" (hoá đơn định kỳ sắp tới).
+ */
+export function trendGrouped(txs: Transaction[], bills: Bill[], mode: PeriodMode, a: Date) {
+  const { start, end } = boundsOf(mode, a);
+  const now = new Date();
+  type B = { label: string; range: string; start: Date; end: Date };
+  let buckets: B[] = [];
+  if (mode === "day") {
+    buckets = [0, 4, 8, 12, 16, 20].map((h) => ({ label: `${h}h`, range: `${h}–${h + 4}h`, start: new Date(start.getFullYear(), start.getMonth(), start.getDate(), h), end: new Date(start.getFullYear(), start.getMonth(), start.getDate(), h + 3, 59, 59, 999) }));
+  } else if (mode === "week") {
+    buckets = eachDayOfInterval({ start, end }).map((d) => ({ label: WD[getDay(d)] ?? "", range: format(d, "dd/MM"), start: startOfDay(d), end: endOfDay(d) }));
+  } else if (mode === "month") {
+    let cur = start;
+    let i = 1;
+    while (cur <= end) {
+      const weekEnd = minDate([endOfWeek(cur, { weekStartsOn: 1 }), end]);
+      buckets.push({ label: `Tuần ${i}`, range: `${format(cur, "d")}–${format(weekEnd, "d/M")}`, start: startOfDay(cur), end: endOfDay(weekEnd) });
+      cur = addDays(weekEnd, 1);
+      i++;
+    }
+  } else {
+    buckets = Array.from({ length: 12 }, (_, i) => ({ label: `T${i + 1}`, range: `Tháng ${i + 1}`, start: new Date(start.getFullYear(), i, 1), end: endOfMonth(new Date(start.getFullYear(), i, 1)) }));
+  }
+  return buckets.map((b) => ({
+    label: b.label,
+    range: b.range,
+    ...sumPeriod(txs, b.start, b.end),
+    planned: mode === "day" ? 0 : plannedIn(bills, b.start, b.end, now),
+    future: b.start.getTime() > now.getTime(),
+  }));
 }
