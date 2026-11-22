@@ -5,8 +5,9 @@ import { formatVnd } from "@/lib/format";
 import type { Bill } from "@/lib/types";
 
 /**
- * Chạy mỗi sáng (Vercel Cron): gửi email cho người dùng có hoá đơn còn tối đa 3 ngày.
- * Mỗi hoá đơn chỉ gửi một lần cho mỗi kỳ (ghi vào bảng reminder_log).
+ * Chạy mỗi sáng (Vercel Cron): gửi email nhắc hoá đơn sắp đến hạn, tối đa 3 email cho mỗi hoá đơn mỗi kỳ:
+ * khi còn 3 ngày (hoặc 2 ngày nếu hoá đơn tạo muộn), khi còn 1 ngày và đúng ngày đến hạn.
+ * Mỗi mốc chỉ gửi một lần (ghi vào bảng reminder_log); hoá đơn đã thanh toán thì dừng nhắc.
  * Thử tay: /api/cron/bill-reminders?key=CRON_SECRET&dry=1  (dry=1: chỉ xem, không gửi)
  */
 async function authorized(request: Request) {
@@ -18,6 +19,8 @@ async function authorized(request: Request) {
   const digest = (v: string) => createHash("sha256").update(v, "utf8").digest();
   return timingSafeEqual(digest(token), digest(secret));
 }
+
+const stageOf = (daysLeft: number) => (daysLeft <= 0 ? "d0" : daysLeft === 1 ? "d1" : "d3");
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 
@@ -49,11 +52,11 @@ export const Route = createFileRoute("/api/cron/bill-reminders")({
         const { data: rows, error } = await db.from("user_data").select("user_id, data").limit(2000);
         if (error) return Response.json({ ok: false, step: "user_data", error: error.message }, { status: 500 });
 
-        const planned = new Map<string, { bill: Bill; due: Date; daysLeft: number; key: string }[]>();
+        const planned = new Map<string, { bill: Bill; due: Date; daysLeft: number; key: string; stage: string }[]>();
         for (const r of (rows ?? []) as { user_id: string; data: { bills?: Bill[] } | null }[]) {
           const bills = Array.isArray(r.data?.bills) ? r.data!.bills! : [];
           const list = billAlerts(bills, vnNow, 3).filter((a) => !a.overdue);
-          if (list.length) planned.set(r.user_id, list.map((a) => ({ bill: a.bill, due: a.due, daysLeft: a.daysLeft, key: a.key })));
+          if (list.length) planned.set(r.user_id, list.map((a) => ({ bill: a.bill, due: a.due, daysLeft: a.daysLeft, key: a.key, stage: stageOf(a.daysLeft) })));
         }
         const ids = [...planned.keys()];
         if (ids.length === 0) return Response.json({ ok: true, dry, users: 0, sent: 0, note: "Không có hoá đơn nào cần nhắc hôm nay." });
@@ -78,7 +81,8 @@ export const Route = createFileRoute("/api/cron/bill-reminders")({
         let sent = 0;
         for (const uid of ids) {
           const p = prof.get(uid);
-          const items = planned.get(uid)!.filter((a) => !done.has(`${uid}|${a.bill.id}|${a.key}`));
+          // "d3" cũng coi là đã gửi nếu có bản ghi cũ (từ trước khi có nhiều mốc nhắc)
+          const items = planned.get(uid)!.filter((a) => !done.has(`${uid}|${a.bill.id}|${a.key}:${a.stage}`) && !(a.stage === "d3" && done.has(`${uid}|${a.bill.id}|${a.key}`)));
           if (p?.email_reminders === false) { result.push({ user: uid, bills: items.map((a) => a.bill.name), status: "đã tắt nhắc email" }); continue; }
           if (items.length === 0) { result.push({ user: uid, bills: [], status: "đã gửi trước đó" }); continue; }
           const { data: u } = await db.auth.admin.getUserById(uid);
@@ -88,7 +92,7 @@ export const Route = createFileRoute("/api/cron/bill-reminders")({
           try {
             const mail = buildEmail(p?.display_name || to.split("@")[0]!, items, site);
             await transporter.sendMail({ from: `"FiGo" <${user}>`, to, subject: mail.subject, html: mail.html, text: mail.text });
-            await db.from("reminder_log").upsert(items.map((a) => ({ user_id: uid, bill_id: a.bill.id, period: a.key })), { onConflict: "user_id,bill_id,period", ignoreDuplicates: true });
+            await db.from("reminder_log").upsert(items.map((a) => ({ user_id: uid, bill_id: a.bill.id, period: `${a.key}:${a.stage}` })), { onConflict: "user_id,bill_id,period", ignoreDuplicates: true });
             sent++;
             result.push({ user: uid, to, bills: items.map((a) => a.bill.name), status: "đã gửi" });
           } catch (e) {

@@ -39,7 +39,7 @@ export function EmailReminderCard() {
         <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Mail className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold">Nhắc hoá đơn qua email</h2>
-          <p className="text-sm text-muted-foreground">Mỗi sáng, gửi email khi có hoá đơn còn tối đa 3 ngày nữa đến hạn.</p>
+          <p className="text-sm text-muted-foreground">Gửi email khi hoá đơn còn 3 ngày, còn 1 ngày và đúng ngày đến hạn (đã thanh toán thì dừng nhắc).</p>
         </div>
         <Switch checked={on ?? true} disabled={on === null} onCheckedChange={(v) => void change(v)} aria-label="Bật tắt nhắc hoá đơn qua email" />
       </div>
