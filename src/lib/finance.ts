@@ -71,7 +71,11 @@ export function trendSeries(txs: Transaction[], range: TrendRange) {
   if (range === "week") {
     for (let i = 7; i >= 0; i--) {
       const d = subWeeks(now, i);
-      buckets.push({ label: `T${format(startOfWeek(d, { weekStartsOn: 1 }), "dd/MM")}`, start: startOfWeek(d, { weekStartsOn: 1 }), end: endOfWeek(d, { weekStartsOn: 1 }) });
+      buckets.push({
+        label: `T${format(startOfWeek(d, { weekStartsOn: 1 }), "dd/MM")}`,
+        start: startOfWeek(d, { weekStartsOn: 1 }),
+        end: endOfWeek(d, { weekStartsOn: 1 }),
+      });
     }
   } else if (range === "month") {
     for (let i = 5; i >= 0; i--) {
@@ -105,12 +109,15 @@ export interface BudgetProgress {
   remaining: number;
 }
 
-export function budgetProgress(budget: Budget, txs: Transaction[], key = monthKey()): BudgetProgress {
+export function budgetProgress(
+  budget: Budget,
+  txs: Transaction[],
+  key = monthKey(),
+): BudgetProgress {
   const m = inMonth(txs, key).filter((t) => t.type === "expense");
-  const spent = (budget.categoryId === "all" ? m : m.filter((t) => t.categoryId === budget.categoryId)).reduce(
-    (s, t) => s + t.amount,
-    0,
-  );
+  const spent = (
+    budget.categoryId === "all" ? m : m.filter((t) => t.categoryId === budget.categoryId)
+  ).reduce((s, t) => s + t.amount, 0);
   const pct = budget.limit ? Math.round((spent / budget.limit) * 1000) / 10 : 0;
   const status = pct >= 100 ? "over" : pct >= 80 ? "warning" : "safe";
   return { budget, spent, pct, status, remaining: budget.limit - spent };
@@ -119,7 +126,9 @@ export function budgetProgress(budget: Budget, txs: Transaction[], key = monthKe
 export function activeBudgets(budgets: Budget[], key = monthKey()) {
   // month-specific overrides recurring ("*")
   const specific = budgets.filter((b) => b.month === key);
-  const recurring = budgets.filter((b) => b.month === "*" && !specific.some((s) => s.categoryId === b.categoryId));
+  const recurring = budgets.filter(
+    (b) => b.month === "*" && !specific.some((s) => s.categoryId === b.categoryId),
+  );
   return [...specific, ...recurring];
 }
 
@@ -131,7 +140,13 @@ export function billStatus(bill: Bill, key = monthKey()) {
   const due = new Date(y, m - 1, Math.min(bill.dueDay, days));
   const paid = bill.paidMonths.includes(key);
   const daysLeft = differenceInCalendarDays(due, new Date());
-  return { due, paid, daysLeft, overdue: !paid && daysLeft < 0, dueSoon: !paid && daysLeft >= 0 && daysLeft <= 3 };
+  return {
+    due,
+    paid,
+    daysLeft,
+    overdue: !paid && daysLeft < 0,
+    dueSoon: !paid && daysLeft >= 0 && daysLeft <= 3,
+  };
 }
 
 export function goalStats(goal: Goal) {
@@ -160,42 +175,105 @@ export function buildInsights(txs: Transaction[], budgets: Budget[], goals: Goal
     if (top) {
       const share = Math.round((top.amount / income) * 100);
       if (share >= 30)
-        out.push({ tone: "warn", text: `Tháng này bạn chi cho ${top.name} chiếm ${share}% tổng thu nhập (${formatVnd(top.amount)}). Hãy cân nhắc tiết kiệm hơn nhé!` });
-      else out.push({ tone: "info", text: `Khoản chi lớn nhất tháng này là ${top.name} với ${formatVnd(top.amount)}, tương đương ${share}% thu nhập.` });
+        out.push({
+          tone: "warn",
+          text: `Tháng này bạn chi cho ${top.name} chiếm ${share}% tổng thu nhập (${formatVnd(top.amount)}). Hãy cân nhắc tiết kiệm hơn nhé!`,
+        });
+      else
+        out.push({
+          tone: "info",
+          text: `Khoản chi lớn nhất tháng này là ${top.name} với ${formatVnd(top.amount)}, tương đương ${share}% thu nhập.`,
+        });
     }
     const saveRate = Math.round((net / income) * 100);
-    if (saveRate >= 20) out.push({ tone: "good", text: `Tuyệt vời! Bạn đang giữ lại được ${saveRate}% thu nhập tháng này. Duy trì quy tắc 50/30/20 nhé.` });
-    else if (saveRate > 0) out.push({ tone: "warn", text: `Tỷ lệ tiết kiệm tháng này chỉ ${saveRate}%. Mục tiêu lý tưởng là tối thiểu 20% thu nhập.` });
-    else out.push({ tone: "warn", text: `Chi tiêu đã vượt thu nhập ${formatVnd(-net)} trong tháng này. Hãy rà soát lại các khoản không thiết yếu.` });
+    if (saveRate >= 20)
+      out.push({
+        tone: "good",
+        text: `Tuyệt vời! Bạn đang giữ lại được ${saveRate}% thu nhập tháng này. Duy trì quy tắc 50/30/20 nhé.`,
+      });
+    else if (saveRate > 0)
+      out.push({
+        tone: "warn",
+        text: `Tỷ lệ tiết kiệm tháng này chỉ ${saveRate}%. Mục tiêu lý tưởng là tối thiểu 20% thu nhập.`,
+      });
+    else
+      out.push({
+        tone: "warn",
+        text: `Chi tiêu đã vượt thu nhập ${formatVnd(-net)} trong tháng này. Hãy rà soát lại các khoản không thiết yếu.`,
+      });
   }
 
   if (prev.expense > 0) {
     const diff = Math.round(((expense - prev.expense) / prev.expense) * 100);
-    if (diff <= -10) out.push({ tone: "good", text: `Chi tiêu tháng này giảm ${-diff}% so với tháng trước. Bạn đang đi đúng hướng!` });
-    else if (diff >= 15) out.push({ tone: "warn", text: `Chi tiêu tháng này tăng ${diff}% so với tháng trước (${formatVnd(expense - prev.expense, { sign: true })}).` });
+    if (diff <= -10)
+      out.push({
+        tone: "good",
+        text: `Chi tiêu tháng này giảm ${-diff}% so với tháng trước. Bạn đang đi đúng hướng!`,
+      });
+    else if (diff >= 15)
+      out.push({
+        tone: "warn",
+        text: `Chi tiêu tháng này tăng ${diff}% so với tháng trước (${formatVnd(expense - prev.expense, { sign: true })}).`,
+      });
   }
 
   const coffee = breakdown.find((b) => b.categoryId === "ca_phe");
   if (coffee && coffee.amount >= 400_000)
-    out.push({ tone: "info", text: `Cà phê & gặp gỡ bạn bè đã tốn ${formatVnd(coffee.amount)}. Pha cà phê tại nhà 2 ngày/tuần có thể tiết kiệm ~${formatVnd(Math.round(coffee.amount * 0.3))}/tháng.` });
+    out.push({
+      tone: "info",
+      text: `Cà phê & gặp gỡ bạn bè đã tốn ${formatVnd(coffee.amount)}. Pha cà phê tại nhà 2 ngày/tuần có thể tiết kiệm ~${formatVnd(Math.round(coffee.amount * 0.3))}/tháng.`,
+    });
 
   const over = activeBudgets(budgets, key)
     .map((b) => budgetProgress(b, txs, key))
     .filter((p) => p.status !== "safe");
   for (const p of over.slice(0, 2)) {
-    const name = p.budget.categoryId === "all" ? "Toàn bộ ví" : getCategory(p.budget.categoryId).name;
+    const name =
+      p.budget.categoryId === "all" ? "Toàn bộ ví" : getCategory(p.budget.categoryId).name;
     out.push({
       tone: p.status === "over" ? "warn" : "info",
-      text: p.status === "over" ? `Hạn mức "${name}" đã vượt ${formatVnd(-p.remaining)}. Tạm dừng chi cho mục này đến hết tháng nhé.` : `Hạn mức "${name}" đã dùng ${p.pct}%. Chỉ còn ${formatVnd(p.remaining)} cho phần còn lại của tháng.`,
+      text:
+        p.status === "over"
+          ? `Hạn mức "${name}" đã vượt ${formatVnd(-p.remaining)}. Tạm dừng chi cho mục này đến hết tháng nhé.`
+          : `Hạn mức "${name}" đã dùng ${p.pct}%. Chỉ còn ${formatVnd(p.remaining)} cho phần còn lại của tháng.`,
     });
   }
 
-  const g = goals.filter((x) => !goalStats(x).done).sort((a, b) => goalStats(a).daysLeft - goalStats(b).daysLeft)[0];
+  const g = goals
+    .filter((x) => !goalStats(x).done)
+    .sort((a, b) => goalStats(a).daysLeft - goalStats(b).daysLeft)[0];
   if (g) {
     const st = goalStats(g);
-    out.push({ tone: "info", text: `Để đạt "${g.name}" đúng hạn, bạn cần gom thêm khoảng ${formatVnd(st.perMonth)}/tháng trong ${Math.max(1, Math.ceil(st.daysLeft / 30))} tháng tới.` });
+    out.push({
+      tone: "info",
+      text: `Để đạt "${g.name}" đúng hạn, bạn cần gom thêm khoảng ${formatVnd(st.perMonth)}/tháng trong ${Math.max(1, Math.ceil(st.daysLeft / 30))} tháng tới.`,
+    });
   }
 
-  if (out.length === 0) out.push({ tone: "info", text: "Hãy thêm vài giao dịch để FiGo phân tích thói quen chi tiêu của bạn." });
+  if (out.length === 0)
+    out.push({
+      tone: "info",
+      text: "Hãy thêm vài giao dịch để FiGo phân tích thói quen chi tiêu của bạn.",
+    });
   return out.slice(0, 4);
+}
+
+/** Tính chuỗi ngày ghi chép liên tiếp từ dữ liệu giao dịch thực tế. */
+export function computeLoggingStreak(txs: Transaction[], now = new Date()) {
+  if (txs.length === 0) return { streak: 0, loggedToday: false, monthDays: 0 };
+  const days = new Set(txs.map((t) => format(parseISO(t.date), "yyyy-MM-dd")));
+  const todayKey = format(now, "yyyy-MM-dd");
+  const loggedToday = days.has(todayKey);
+  const ym = format(now, "yyyy-MM");
+  let monthDays = 0;
+  for (const d of days) if (d.startsWith(ym)) monthDays++;
+
+  let streak = 0;
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!loggedToday) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(format(cursor, "yyyy-MM-dd"))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { streak, loggedToday, monthDays };
 }

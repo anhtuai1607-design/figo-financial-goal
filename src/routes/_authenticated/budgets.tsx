@@ -1,29 +1,284 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CategoryPicker } from "@/components/finance/CategoryPicker";
-import { PageHeader, Panel, EmptyState, metaFor } from "@/components/finance/Common";
-import { categoriesByType, getCategory } from "@/lib/categories";
+import { EmptyState, PageHeader, Panel, metaFor } from "@/components/finance/Common";
+import { getCategory } from "@/lib/categories";
 import { activeBudgets, budgetProgress } from "@/lib/finance";
 import { formatVnd, formatVndInput, monthKey, parseVndInput } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
+import { useUI } from "@/lib/ui-store";
 import type { Budget } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/budgets")({ head: () => ({ meta: metaFor("Ngân sách", "Đặt hạn mức chi tiêu theo tháng và nhận cảnh báo đúng lúc.") }), component: BudgetsPage });
+export const Route = createFileRoute("/_authenticated/budgets")({
+  head: () => ({
+    meta: metaFor("Ngân sách", "Đặt hạn mức chi tiêu theo tháng và nhận cảnh báo đúng lúc."),
+  }),
+  component: BudgetsPage,
+});
 
 function BudgetsPage() {
-  const budgets = useFiGo((s) => s.budgets); const txs = useFiGo((s) => s.transactions); const upsert = useFiGo((s) => s.upsertBudget); const remove = useFiGo((s) => s.removeBudget);
-  const [month, setMonth] = useState(monthKey()); const [open, setOpen] = useState(false); const [editing, setEditing] = useState<Budget | null>(null); const [categoryId, setCategory] = useState("all"); const [limit, setLimit] = useState(""); const [recurring, setRecurring] = useState("yes");
+  const budgets = useFiGo((s) => s.budgets);
+  const txs = useFiGo((s) => s.transactions);
+  const upsert = useFiGo((s) => s.upsertBudget);
+  const remove = useFiGo((s) => s.removeBudget);
+  const triggerMascot = useUI((s) => s.triggerMascot);
+
+  const [month, setMonth] = useState(monthKey());
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Budget | null>(null);
+  const [categoryId, setCategory] = useState("all");
+  const [limit, setLimit] = useState("");
+  const [recurring, setRecurring] = useState("yes");
+
   const rows = activeBudgets(budgets, month).map((b) => budgetProgress(b, txs, month));
-  const showForm = (budget?: Budget) => { setEditing(budget ?? null); setCategory(budget?.categoryId ?? "all"); setLimit(budget ? formatVndInput(budget.limit) : ""); setRecurring(budget?.month === "*" ? "yes" : "no"); setOpen(true); };
-  const submit = (e: FormEvent) => { e.preventDefault(); const value = parseVndInput(limit); if (!value) { toast.error("Hạn mức phải lớn hơn 0 đ."); return; } upsert({ ...(editing && { id: editing.id }), categoryId, limit: value, month: recurring === "yes" ? "*" : month }); toast.success(editing ? "Đã cập nhật hạn mức." : "Đã thêm hạn mức."); setOpen(false); };
-  return <div><PageHeader title="Ngân sách tháng" subtitle="Kiểm soát chi tiêu trước khi tiền rời khỏi ví" action={<div className="flex gap-2"><Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40"/><Button onClick={() => showForm()}><Plus /> Thêm hạn mức</Button></div>} />{rows.length ? <div className="grid gap-4 md:grid-cols-2">{rows.map((row) => { const category = row.budget.categoryId === "all" ? null : getCategory(row.budget.categoryId); const Icon = category?.icon; return <Panel key={row.budget.id}><div className="flex items-start gap-3"><span className={cn("flex size-11 items-center justify-center rounded-xl", row.status === "over" ? "bg-destructive/10 text-destructive" : row.status === "warning" ? "bg-warning/20 text-warning-foreground" : "bg-accent text-primary")}>{Icon ? <Icon className="size-5"/> : <CheckCircle2 className="size-5"/>}</span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><h2 className="font-bold">{category?.name ?? "Toàn bộ ví"}</h2><p className="text-xs text-muted-foreground">{row.budget.month === "*" ? "Lặp lại hàng tháng" : `Riêng tháng ${month.slice(5)}/${month.slice(0, 4)}`}</p></div><div className="flex"><Button size="icon" variant="ghost" onClick={() => showForm(row.budget)} aria-label="Sửa hạn mức"><Pencil /></Button><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => { remove(row.budget.id); toast.success("Đã xoá hạn mức."); }} aria-label="Xoá hạn mức"><Trash2 /></Button></div></div><div className="mt-5 flex items-end justify-between"><div><p className="text-xs text-muted-foreground">Đã chi</p><p className="font-extrabold tabular">{formatVnd(row.spent)}</p></div><p className={cn("text-sm font-bold", row.status === "over" ? "text-destructive" : row.status === "warning" ? "text-warning-foreground" : "text-primary")}>{row.pct}%</p></div><div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-all duration-500", row.status === "over" ? "bg-destructive" : row.status === "warning" ? "bg-warning" : "bg-primary")} style={{ width: `${Math.min(100, row.pct)}%` }}/></div><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{row.remaining >= 0 ? `Còn ${formatVnd(row.remaining)}` : `Vượt ${formatVnd(-row.remaining)}`}</span><span>Hạn mức {formatVnd(row.budget.limit)}</span></div></div></div></Panel>; })}</div> : <Panel><EmptyState title="Chưa có hạn mức" text="Tạo hạn mức đầu tiên để FiGo cảnh báo khi chi tiêu gần vượt kế hoạch."/></Panel>}
-  <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl"><DialogHeader><DialogTitle>{editing ? "Sửa hạn mức" : "Thêm hạn mức"}</DialogTitle><DialogDescription>Chọn danh mục và số tiền tối đa muốn chi.</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><CategoryPicker type="expense" value={categoryId} onChange={setCategory} allOption={{ id: "all", label: "Toàn bộ ví" }} /><div><Label>Hạn mức</Label><Input value={limit} onChange={(e) => setLimit(formatVndInput(parseVndInput(e.target.value)))} inputMode="numeric" placeholder="3.000.000" className="mt-1 h-11"/></div><div><Label>Áp dụng</Label><Select value={recurring} onValueChange={setRecurring}><SelectTrigger className="mt-1"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="yes">Lặp lại hàng tháng</SelectItem><SelectItem value="no">Chỉ tháng đang chọn</SelectItem></SelectContent></Select></div><Button className="w-full" type="submit">Lưu hạn mức</Button></form></DialogContent></Dialog></div>;
+  const showForm = (budget?: Budget) => {
+    setEditing(budget ?? null);
+    setCategory(budget?.categoryId ?? "all");
+    setLimit(budget ? formatVndInput(budget.limit) : "");
+    setRecurring(budget?.month === "*" ? "yes" : "no");
+    setOpen(true);
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const value = parseVndInput(limit);
+    if (!value) {
+      toast.error("Hạn mức phải lớn hơn 0 đ.");
+      return;
+    }
+    upsert({
+      ...(editing && { id: editing.id }),
+      categoryId,
+      limit: value,
+      month: recurring === "yes" ? "*" : month,
+    });
+    toast.success(editing ? "Đã cập nhật hạn mức." : "Đã thêm hạn mức.");
+    triggerMascot({
+      mood: "happy",
+      message: editing
+        ? `Đã cập nhật hạn mức ${formatVnd(value)}.`
+        : `Đã đặt hạn mức ${formatVnd(value)}! Mình sẽ nhắc nếu sắp chạm ngưỡng.`,
+    });
+    setOpen(false);
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Ngân sách tháng"
+        subtitle="Kiểm soát chi tiêu trước khi tiền rời khỏi ví"
+        action={
+          <div className="flex gap-2">
+            <Input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="w-40"
+            />
+            <Button onClick={() => showForm()}>
+              <Plus /> Thêm hạn mức
+            </Button>
+          </div>
+        }
+      />
+
+      {rows.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {rows.map((row, idx) => {
+            const category =
+              row.budget.categoryId === "all" ? null : getCategory(row.budget.categoryId);
+            const Icon = category?.icon;
+            const statusText =
+              row.status === "over"
+                ? "Vượt hạn mức"
+                : row.status === "warning"
+                  ? "Sắp chạm ngưỡng"
+                  : "An toàn";
+            return (
+              <motion.div
+                key={row.budget.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <Panel>
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={cn(
+                        "flex size-11 shrink-0 items-center justify-center rounded-xl",
+                        row.status === "over"
+                          ? "bg-destructive/12 text-destructive"
+                          : row.status === "warning"
+                            ? "bg-warning/25 text-warning-foreground"
+                            : "bg-accent text-primary",
+                      )}
+                    >
+                      {row.status === "over" ? (
+                        <AlertTriangle className="size-5" />
+                      ) : Icon ? (
+                        <Icon className="size-5" />
+                      ) : (
+                        <CheckCircle2 className="size-5" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h2 className="font-bold">{category?.name ?? "Toàn bộ ví"}</h2>
+                          <p className="text-xs text-muted-foreground">
+                            {row.budget.month === "*"
+                              ? "Lặp lại hàng tháng"
+                              : `Riêng tháng ${month.slice(5)}/${month.slice(0, 4)}`}{" "}
+                            · {statusText}
+                          </p>
+                        </div>
+                        <div className="flex">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => showForm(row.budget)}
+                            aria-label="Sửa hạn mức"
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              remove(row.budget.id);
+                              toast.success("Đã xoá hạn mức.");
+                            }}
+                            aria-label="Xoá hạn mức"
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-5 flex items-end justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Đã chi</p>
+                          <p className="font-extrabold tabular-nums">{formatVnd(row.spent)}</p>
+                        </div>
+                        <p
+                          className={cn(
+                            "text-sm font-bold tabular-nums",
+                            row.status === "over"
+                              ? "text-destructive"
+                              : row.status === "warning"
+                                ? "text-warning-foreground"
+                                : "text-primary",
+                          )}
+                        >
+                          {row.pct}%
+                        </p>
+                      </div>
+                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                        <motion.div
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: Math.min(100, row.pct) / 100 }}
+                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                          style={{ transformOrigin: "left" }}
+                          className={cn(
+                            "h-full w-full rounded-full",
+                            row.status === "over"
+                              ? "bg-destructive"
+                              : row.status === "warning"
+                                ? "bg-warning"
+                                : "bg-primary",
+                          )}
+                        />
+                      </div>
+                      <div className="mt-2 flex justify-between text-xs text-muted-foreground tabular-nums">
+                        <span>
+                          {row.remaining >= 0
+                            ? `Còn ${formatVnd(row.remaining)}`
+                            : `Vượt ${formatVnd(-row.remaining)}`}
+                        </span>
+                        <span>Hạn mức {formatVnd(row.budget.limit)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Panel>
+              </motion.div>
+            );
+          })}
+        </div>
+      ) : (
+        <Panel>
+          <EmptyState
+            title="Chưa có hạn mức"
+            text="Tạo hạn mức đầu tiên để FiGo cảnh báo khi chi tiêu gần vượt kế hoạch."
+            action={
+              <Button onClick={() => showForm()}>
+                <Plus /> Thêm hạn mức
+              </Button>
+            }
+          />
+        </Panel>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Sửa hạn mức" : "Thêm hạn mức"}</DialogTitle>
+            <DialogDescription>Chọn danh mục và số tiền tối đa muốn chi.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submit} className="space-y-4">
+            <CategoryPicker
+              type="expense"
+              value={categoryId}
+              onChange={setCategory}
+              allOption={{ id: "all", label: "Toàn bộ ví" }}
+            />
+            <div>
+              <Label>Hạn mức</Label>
+              <Input
+                value={limit}
+                onChange={(e) => setLimit(formatVndInput(parseVndInput(e.target.value)))}
+                inputMode="numeric"
+                placeholder="3.000.000"
+                className="mt-1 h-11"
+              />
+            </div>
+            <div>
+              <Label>Áp dụng</Label>
+              <Select value={recurring} onValueChange={setRecurring}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Lặp lại hàng tháng</SelectItem>
+                  <SelectItem value="no">Chỉ tháng đang chọn</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" type="submit">
+              Lưu hạn mức
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

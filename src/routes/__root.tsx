@@ -22,7 +22,9 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-gradient">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Không tìm thấy trang</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Trang bạn tìm không tồn tại hoặc đã được di chuyển.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Trang bạn tìm không tồn tại hoặc đã được di chuyển.
+        </p>
         <div className="mt-6">
           <Link
             to="/"
@@ -46,8 +48,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Trang này không tải được</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Đã có lỗi xảy ra. Bạn có thể thử lại hoặc quay về trang chủ.</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Trang này không tải được
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Đã có lỗi xảy ra. Bạn có thể thử lại hoặc quay về trang chủ.
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -92,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap",
       },
     ],
     scripts: [{ children: THEME_INIT_SCRIPT }],
@@ -126,7 +132,13 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </AppShell>
-      <Toaster position="top-center" richColors closeButton offset="calc(env(safe-area-inset-top, 0px) + 24px)" mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 60px)" }} />
+      <Toaster
+        position="top-center"
+        richColors
+        closeButton
+        offset="calc(env(safe-area-inset-top, 0px) + 24px)"
+        mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 60px)" }}
+      />
     </QueryClientProvider>
   );
 }
