@@ -33,7 +33,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { CategoryPicker } from "@/components/finance/CategoryPicker";
 import { PageHeader, Panel, metaFor } from "@/components/finance/Common";
-import { categoriesByType, getCategory } from "@/lib/categories";
+import { getCategory } from "@/lib/categories";
 import { accountBalance, billStatus } from "@/lib/finance";
 import { formatVnd, formatVndInput, parseVndInput } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
@@ -131,7 +131,7 @@ function BillsPage() {
       mood: "happy",
       message: editing
         ? `Đã cập nhật lịch hoá đơn "${data.name}".`
-        : `Đã thêm "${data.name}"! Mình sẽ nhắc bạn trước 3 ngày.`,
+        : `Đã thêm lịch "${data.name}" vào ngày ${data.dueDay} hàng tháng.`,
     });
     setOpen(false);
   };
@@ -159,7 +159,7 @@ function BillsPage() {
     if (nowPaid)
       triggerMascot({
         mood: "celebrate",
-        message: `Xong "${bill.name}" (${formatVnd(bill.amount)})! Nhẹ cả người rồi nhé.`,
+        message: `Đã thanh toán "${bill.name}" (${formatVnd(bill.amount)}).`,
       });
   };
   const del = (bill: Bill) => {
@@ -180,38 +180,40 @@ function BillsPage() {
             onClick={() => pay(bill, mk, st.paid)}
             aria-label={st.paid ? "Bỏ đánh dấu đã trả" : "Ghi đã trả"}
             className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90",
+              "flex size-6 shrink-0 items-center justify-center rounded-md border transition active:scale-95",
               st.paid
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-muted-foreground/40",
+                : "border-border bg-card hover:border-primary/50",
             )}
           >
-            {st.paid && <Check className="size-4" strokeWidth={3} />}
+            {st.paid && <Check className="size-3.5" strokeWidth={2.5} />}
           </button>
           <div className="min-w-0 flex-1">
             <p
               className={cn(
-                "truncate font-semibold",
+                "truncate text-sm font-semibold",
                 st.paid && "text-muted-foreground line-through",
               )}
             >
               {bill.name}
             </p>
-            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-              <Icon className="size-3.5 shrink-0" />
+            <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground tabular-nums">
+              <Icon className="size-3.5 shrink-0" strokeWidth={1.5} />
               Ngày {bill.dueDay} hàng tháng · {accounts.find((a) => a.id === bill.accountId)?.name}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-bold tabular-nums">{formatVnd(bill.amount)}</p>
+            <p className="text-sm font-semibold tabular-nums">{formatVnd(bill.amount)}</p>
             <p
               className={cn(
-                "text-xs font-medium",
+                "text-xs font-medium tabular-nums",
                 st.paid
-                  ? "text-primary"
+                  ? "text-income"
                   : st.overdue
                     ? "text-destructive"
-                    : "text-muted-foreground",
+                    : st.daysLeft <= 3
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-muted-foreground",
               )}
             >
               {st.paid
@@ -219,12 +221,12 @@ function BillsPage() {
                 : st.overdue
                   ? `Quá hạn ${-st.daysLeft} ngày`
                   : st.daysLeft === 0
-                    ? "Hôm nay"
+                    ? "Đến hạn hôm nay"
                     : `Còn ${st.daysLeft} ngày`}
             </p>
           </div>
         </div>
-        <div className="mt-1 flex justify-end gap-0.5">
+        <div className="mt-1.5 flex justify-end gap-0.5">
           <Button
             size="icon"
             variant="ghost"
@@ -260,11 +262,11 @@ function BillsPage() {
   return (
     <div>
       <PageHeader
-        title="Hóa đơn & định kỳ"
-        subtitle="Chạm vào một ngày để thêm hoá đơn"
+        title="Hóa đơn định kỳ"
+        subtitle="Chọn một ngày trên lịch để thêm hoặc đối chiếu khoản thanh toán"
         action={
           <Button onClick={() => show()}>
-            <Plus /> Thêm hoá đơn
+            <Plus /> Thêm hóa đơn
           </Button>
         }
       />
@@ -277,11 +279,12 @@ function BillsPage() {
               setPicker(!picker);
               setPickYear(cursor.getFullYear());
             }}
-            className="flex items-center gap-1 text-lg font-bold"
+            className="flex items-center gap-1.5 text-base font-semibold"
           >
             {cap(format(cursor, "MMMM, yyyy", { locale: vi }))}
             <ChevronRight
               className={cn("size-4 text-muted-foreground transition", picker && "rotate-90")}
+              strokeWidth={1.5}
             />
           </button>
           <div className="flex items-center gap-1">
@@ -289,15 +292,15 @@ function BillsPage() {
               <button
                 type="button"
                 onClick={() => goTo(today)}
-                className="mr-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                className="tactile mr-1 rounded-lg border border-primary/25 bg-accent px-2.5 py-1 text-xs font-medium text-primary"
               >
                 Hôm nay
               </button>
             )}
             <Button
               size="icon"
-              variant="ghost"
-              className="size-9 rounded-full"
+              variant="outline"
+              className="size-8 rounded-lg"
               onClick={() => shift(-1)}
               aria-label="Tháng trước"
             >
@@ -305,8 +308,8 @@ function BillsPage() {
             </Button>
             <Button
               size="icon"
-              variant="ghost"
-              className="size-9 rounded-full"
+              variant="outline"
+              className="size-8 rounded-lg"
               onClick={() => shift(1)}
               aria-label="Tháng sau"
             >
@@ -316,22 +319,22 @@ function BillsPage() {
         </div>
 
         {picker ? (
-          <div className="rounded-2xl bg-muted/50 p-3">
+          <div className="rounded-xl border border-border bg-muted/40 p-3">
             <div className="mb-2 flex items-center justify-between">
               <Button
                 size="icon"
-                variant="ghost"
-                className="size-8 rounded-full"
+                variant="outline"
+                className="size-8 rounded-lg"
                 onClick={() => setPickYear(pickYear - 1)}
                 aria-label="Năm trước"
               >
                 <ChevronLeft />
               </Button>
-              <span className="font-semibold">{pickYear}</span>
+              <span className="font-semibold tabular-nums">{pickYear}</span>
               <Button
                 size="icon"
-                variant="ghost"
-                className="size-8 rounded-full"
+                variant="outline"
+                className="size-8 rounded-lg"
                 onClick={() => setPickYear(pickYear + 1)}
                 aria-label="Năm sau"
               >
@@ -348,10 +351,10 @@ function BillsPage() {
                     setPicker(false);
                   }}
                   className={cn(
-                    "rounded-xl py-2 text-sm font-medium",
+                    "tactile rounded-lg border py-2 text-sm font-medium transition-colors",
                     pickYear === cursor.getFullYear() && i === cursor.getMonth()
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card",
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary/35 hover:bg-accent/50",
                   )}
                 >
                   Th{i + 1}
@@ -361,9 +364,9 @@ function BillsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
+            <div className="grid grid-cols-7 text-center text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
               {WEEK.map((d) => (
-                <span key={d} className="py-1">
+                <span key={d} className="py-1.5">
                   {d}
                 </span>
               ))}
@@ -383,28 +386,28 @@ function BillsPage() {
                     onClick={() =>
                       setSelected(new Date(cursor.getFullYear(), cursor.getMonth(), day))
                     }
-                    className="relative mx-auto flex h-11 w-11 flex-col items-center justify-center"
+                    className="tactile relative mx-auto flex h-11 w-11 flex-col items-center justify-center"
                   >
                     <span
                       className={cn(
-                        "flex size-9 items-center justify-center rounded-full text-sm transition",
+                        "flex size-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors",
                         isToday
-                          ? "bg-primary font-semibold text-primary-foreground"
+                          ? "bg-primary font-semibold text-primary-foreground shadow-xs"
                           : isSel
-                            ? "bg-primary/10 font-semibold text-primary ring-1 ring-primary/40"
-                            : "",
+                            ? "border border-primary/40 bg-accent font-semibold text-primary"
+                            : "hover:bg-accent/55",
                       )}
                     >
                       {day}
                     </span>
                     {list.length > 0 && (
-                      <span className="absolute bottom-0 flex gap-0.5">
+                      <span className="absolute bottom-0.5 flex gap-0.5">
                         {list.slice(0, 3).map((b) => (
                           <span
                             key={b.id}
                             className={cn(
                               "size-1 rounded-full",
-                              b.paidMonths.includes(mk) ? "bg-primary" : "bg-expense",
+                              b.paidMonths.includes(mk) ? "bg-income" : "bg-amber-600",
                             )}
                           />
                         ))}
@@ -419,13 +422,13 @@ function BillsPage() {
       </Panel>
 
       <Panel className="mb-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between border-b border-border/70 pb-3">
           <div>
-            <p className="font-bold">
+            <p className="text-base font-semibold">
               {cap(format(selected, "EEEE, d 'tháng' M", { locale: vi }))}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {dayBills.length ? `${dayBills.length} khoản đến hạn` : "Chưa có hoá đơn"}
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {dayBills.length ? `${dayBills.length} khoản đến hạn` : "Chưa có hóa đơn"}
             </p>
           </div>
           <Button size="sm" onClick={() => show()}>
@@ -433,23 +436,27 @@ function BillsPage() {
           </Button>
         </div>
         {dayBills.length ? (
-          <div className="divide-y">{dayBills.map(row)}</div>
+          <div className="divide-y divide-border/70">{dayBills.map(row)}</div>
         ) : (
-          <p className="rounded-xl bg-muted/50 py-6 text-center text-sm text-muted-foreground">
-            Ngày này chưa có khoản nào. Bấm Thêm để ghi luôn cho ngày {selected.getDate()}.
+          <p className="rounded-xl border border-dashed border-border bg-muted/30 py-6 text-center text-xs text-muted-foreground">
+            Ngày này chưa có khoản nào. Bấm Thêm để thiết lập cho ngày {selected.getDate()}.
           </p>
         )}
       </Panel>
 
       {bills.length > 0 && (
         <Panel>
-          <p className="mb-3 font-bold">Tất cả hoá đơn định kỳ</p>
-          <div className="divide-y">{[...bills].sort((a, b) => a.dueDay - b.dueDay).map(row)}</div>
+          <p className="mb-3 border-b border-border/70 pb-3 text-base font-semibold">
+            Tất cả hóa đơn định kỳ
+          </p>
+          <div className="divide-y divide-border/70">
+            {[...bills].sort((a, b) => a.dueDay - b.dueDay).map(row)}
+          </div>
         </Panel>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl">
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa hoá đơn" : "Thêm hoá đơn"}</DialogTitle>
             <DialogDescription>
@@ -475,7 +482,7 @@ function BillsPage() {
                   value={amount}
                   onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))}
                   inputMode="numeric"
-                  className="mt-1"
+                  className="mt-1 tabular-nums"
                 />
               </div>
               <div>
@@ -486,7 +493,7 @@ function BillsPage() {
                   max="31"
                   value={dueDay}
                   onChange={(e) => setDueDay(e.target.value)}
-                  className="mt-1"
+                  className="mt-1 tabular-nums"
                 />
               </div>
             </div>
@@ -506,10 +513,10 @@ function BillsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between rounded-xl bg-muted p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 p-3">
               <div>
                 <p className="text-sm font-medium">Nhắc khi gần đến hạn</p>
-                <p className="text-xs text-muted-foreground">Hiện cảnh báo trước 3 ngày</p>
+                <p className="text-xs text-muted-foreground">Hiển thị cảnh báo trước 3 ngày</p>
               </div>
               <Switch checked={reminder} onCheckedChange={setReminder} />
             </div>

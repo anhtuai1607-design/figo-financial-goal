@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Camera, Check, Image, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,18 +16,26 @@ import { categoriesByType } from "@/lib/categories";
 import { CategoryPicker } from "@/components/finance/CategoryPicker";
 import { cn } from "@/lib/utils";
 import { accountBalance, activeBudgets, budgetProgress } from "@/lib/finance";
-import { formatVnd, formatVndInput, monthKey, parseVndInput, uid } from "@/lib/format";
+import { formatVnd, formatVndInput, monthKey, parseVndInput } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
 import type { TransactionType } from "@/lib/types";
 import { useUI } from "@/lib/ui-store";
 
-// Đổi một thời điểm sang chuỗi "YYYY-MM-DDTHH:mm" theo GIỜ ĐỊA PHƯƠNG của máy (ô chọn ngày giờ cần dạng này).
+// Đổi một thời điểm sang chuỗi "YYYY-MM-DDTHH:mm" theo GIỜ ĐỊA PHƯƠNG của máy.
 const toLocalInput = (value: Date | string) => {
   const d = new Date(value);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 };
 const nowLocal = () => toLocalInput(new Date());
+
+const QUICK_AMOUNTS = [
+  { label: "+50k", value: 50_000 },
+  { label: "+100k", value: 100_000 },
+  { label: "+200k", value: 200_000 },
+  { label: "+500k", value: 500_000 },
+  { label: "+1tr", value: 1_000_000 },
+];
 
 async function compressImage(file: File) {
   const url = URL.createObjectURL(file);
@@ -90,6 +98,19 @@ export function TransactionSheet() {
     setCategoryId(categoriesByType(valid)[0]?.id ?? "transfer");
   };
 
+  const selectSourceAccount = (nextId: string) => {
+    setAccountId(nextId);
+    if (toAccountId === nextId) {
+      const alt = accounts.find((a) => a.id !== nextId);
+      setToAccountId(alt?.id ?? "");
+    }
+  };
+
+  const addQuickAmount = (delta: number) => {
+    const next = parseVndInput(amount) + delta;
+    setAmount(formatVndInput(next));
+  };
+
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -123,7 +144,6 @@ export function TransactionSheet() {
     if (type === "expense" || type === "transfer") {
       const acc = accounts.find((a) => a.id === accountId);
       if (acc) {
-        // Khi sửa giao dịch cũ, không tính giao dịch đó vào số dư hiện có.
         const others = editing ? txs.filter((t) => t.id !== editing.id) : txs;
         const balance = accountBalance(acc, others);
         if (value > balance) {
@@ -134,6 +154,11 @@ export function TransactionSheet() {
         }
       }
     }
+    const parsedDate = new Date(date);
+    if (!date || Number.isNaN(parsedDate.getTime())) {
+      toast.error("Vui lòng chọn ngày giờ hợp lệ.");
+      return;
+    }
     const cleanNote = note.trim();
     const data = {
       type,
@@ -141,7 +166,7 @@ export function TransactionSheet() {
       categoryId: type === "transfer" ? "transfer" : categoryId,
       accountId,
       ...(type === "transfer" && { toAccountId }),
-      date: new Date(date).toISOString(),
+      date: parsedDate.toISOString(),
       ...(cleanNote && { note: cleanNote }),
       ...(receipt && { receipt }),
     };
@@ -150,7 +175,7 @@ export function TransactionSheet() {
       toast.success("Đã cập nhật giao dịch.");
       triggerMascot({
         mood: "happy",
-        message: `Đã cập nhật giao dịch ${formatVnd(value)} gọn gàng!`,
+        message: `Đã cập nhật giao dịch ${formatVnd(value)}.`,
       });
     } else {
       add(data);
@@ -158,12 +183,12 @@ export function TransactionSheet() {
       if (type === "income") {
         triggerMascot({
           mood: "celebrate",
-          message: `Tuyệt vời! +${formatVnd(value)} đã vào ví của bạn.`,
+          message: `Đã ghi nhận khoản thu +${formatVnd(value)}.`,
         });
       } else if (type === "transfer") {
         triggerMascot({
           mood: "happy",
-          message: `Đã chuyển ${formatVnd(value)} giữa hai nguồn tiền.`,
+          message: `Đã chuyển ${formatVnd(value)} giữa hai tài khoản.`,
         });
       } else {
         let warned = false;
@@ -175,7 +200,7 @@ export function TransactionSheet() {
             toast.warning("Bạn đã vượt hạn mức tháng này.");
             triggerMascot({
               mood: "warn",
-              message: `Ôi! Khoản chi ${formatVnd(value)} đã khiến hạn mức vượt ${Math.round(status.pct)}%.`,
+              message: `Khoản chi ${formatVnd(value)} đã đưa hạn mức vượt ${Math.round(status.pct)}%.`,
             });
             warned = true;
           } else if (status.status === "warning") {
@@ -183,7 +208,7 @@ export function TransactionSheet() {
             if (!warned) {
               triggerMascot({
                 mood: "warn",
-                message: `Cẩn thận nhé! Hạn mức đã dùng ${status.pct}% rồi.`,
+                message: `Lưu ý: hạn mức tháng đã dùng ${status.pct}%.`,
               });
               warned = true;
             }
@@ -192,7 +217,7 @@ export function TransactionSheet() {
         if (!warned) {
           triggerMascot({
             mood: "happy",
-            message: `Đã ghi nhận khoản chi ${formatVnd(value)}. Rất kỷ luật!`,
+            message: `Đã ghi nhận khoản chi ${formatVnd(value)}.`,
           });
         }
       }
@@ -200,8 +225,6 @@ export function TransactionSheet() {
     close();
   };
 
-  const amountColor =
-    type === "expense" ? "text-expense" : type === "income" ? "text-income" : "text-foreground";
   const balanceOf = (a: (typeof accounts)[number]) =>
     accountBalance(a, editing ? txs.filter((t) => t.id !== editing.id) : txs);
   const accountChips = (
@@ -219,12 +242,16 @@ export function TransactionSheet() {
             type="button"
             onClick={() => onChange(a.id)}
             className={cn(
-              "shrink-0 rounded-xl border px-3.5 py-2 text-left transition",
-              a.id === value ? "border-primary bg-primary/10" : "bg-card",
+              "shrink-0 rounded-xl border px-3.5 py-2 text-left transition-colors",
+              a.id === value
+                ? "border-primary bg-accent/70 ring-1 ring-primary"
+                : "border-border bg-card hover:bg-muted/50",
             )}
           >
             <div className="text-sm font-semibold">{a.name}</div>
-            <div className="text-xs text-muted-foreground">{formatVnd(balanceOf(a))}</div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {formatVnd(balanceOf(a))}
+            </div>
           </button>
         ))}
       </div>
@@ -233,13 +260,13 @@ export function TransactionSheet() {
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-x-hidden overflow-y-auto rounded-2xl bg-white backdrop-blur-none dark:bg-neutral-900 sm:max-w-md">
+      <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-x-hidden overflow-y-auto rounded-xl sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? "Sửa giao dịch" : "Thêm giao dịch"}</DialogTitle>
+          <DialogTitle>{editing ? "Sửa giao dịch" : "Ghi giao dịch mới"}</DialogTitle>
           <DialogDescription className="sr-only">Nhập thông tin giao dịch</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="min-w-0 space-y-4">
-          <div className="grid grid-cols-3 rounded-xl bg-muted/80 p-1">
+          <div className="grid grid-cols-3 rounded-xl border border-border bg-muted p-1">
             {(
               [
                 ["expense", "Chi"],
@@ -252,14 +279,14 @@ export function TransactionSheet() {
                 type="button"
                 onClick={() => changeType(value)}
                 className={cn(
-                  "rounded-lg py-2 text-sm font-semibold transition",
+                  "tactile rounded-lg py-1.5 text-sm font-semibold transition-colors",
                   type === value
                     ? value === "expense"
-                      ? "bg-expense text-white shadow-sm"
+                      ? "bg-rose-600 text-white shadow-xs"
                       : value === "income"
-                        ? "bg-income text-white shadow-sm"
-                        : "bg-sky-500 text-white shadow-sm"
-                    : "text-muted-foreground",
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "bg-sky-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {label}
@@ -267,8 +294,13 @@ export function TransactionSheet() {
             ))}
           </div>
 
-          <div className="rounded-2xl border bg-card px-4 py-3 text-center">
-            <Label htmlFor="tx-amount">Số tiền</Label>
+          <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5 text-center">
+            <Label
+              htmlFor="tx-amount"
+              className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+            >
+              Số tiền (VNĐ)
+            </Label>
             <div className="mt-1 flex items-center justify-center gap-1">
               <Input
                 id="tx-amount"
@@ -277,9 +309,30 @@ export function TransactionSheet() {
                 value={amount}
                 onChange={(e) => setAmount(formatVndInput(parseVndInput(e.target.value)))}
                 placeholder="0"
-                className="h-12 max-w-[70%] border-0 bg-transparent p-0 text-center text-3xl font-bold text-foreground shadow-none focus-visible:ring-0"
+                className="h-12 max-w-[75%] border-0 bg-transparent p-0 text-center text-3xl font-bold tabular-nums text-foreground shadow-none focus-visible:ring-0"
               />
-              <span className="text-xl font-semibold text-foreground">đ</span>
+              <span className="text-xl font-semibold text-muted-foreground">đ</span>
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
+              {QUICK_AMOUNTS.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  onClick={() => addQuickAmount(q.value)}
+                  className="tactile rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground hover:border-primary/40 hover:bg-accent/60"
+                >
+                  {q.label}
+                </button>
+              ))}
+              {parseVndInput(amount) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAmount("")}
+                  className="tactile rounded-lg border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Xoá
+                </button>
+              )}
             </div>
           </div>
 
@@ -294,16 +347,22 @@ export function TransactionSheet() {
                 ? "Nhận vào tài khoản"
                 : "Trả từ tài khoản",
             accountId,
-            setAccountId,
+            selectSourceAccount,
             accounts,
           )}
           {type === "transfer" &&
-            accountChips(
-              "Đến tài khoản",
-              toAccountId,
-              setToAccountId,
-              accounts.filter((a) => a.id !== accountId),
-            )}
+            (accounts.length < 2 ? (
+              <p className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+                Cần ít nhất 2 tài khoản (ví dụ: Tiền mặt và Ngân hàng) để thực hiện chuyển quỹ.
+              </p>
+            ) : (
+              accountChips(
+                "Đến tài khoản",
+                toAccountId,
+                setToAccountId,
+                accounts.filter((a) => a.id !== accountId),
+              )
+            ))}
 
           <div>
             <Label htmlFor="tx-date">Ngày giờ</Label>
@@ -312,7 +371,7 @@ export function TransactionSheet() {
               type="datetime-local"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 h-11"
+              className="mt-1 h-10 tabular-nums"
             />
           </div>
           <div>
@@ -321,7 +380,7 @@ export function TransactionSheet() {
               id="tx-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ví dụ: Ăn trưa cùng đồng nghiệp"
+              placeholder="Ví dụ: Ăn trưa cùng đối tác"
               className="mt-1 min-h-16"
             />
           </div>
@@ -335,7 +394,7 @@ export function TransactionSheet() {
             className="hidden"
           />
           {receipt ? (
-            <div className="relative overflow-hidden rounded-xl border">
+            <div className="relative overflow-hidden rounded-xl border border-border">
               <img src={receipt} alt="Ảnh hoá đơn" className="max-h-48 w-full object-cover" />
               <Button
                 type="button"
@@ -353,21 +412,22 @@ export function TransactionSheet() {
               type="button"
               variant="outline"
               onClick={() => fileRef.current?.click()}
-              className="h-11 w-full"
+              className="h-10 w-full"
             >
-              <Camera className="mr-2 size-4" />
-              Chụp hoặc tải ảnh hoá đơn
+              <Camera className="size-4" strokeWidth={1.5} />
+              Đính kèm ảnh hoá đơn
             </Button>
           )}
           <Button
             type="submit"
+            disabled={type === "transfer" && accounts.length < 2}
             className={cn(
-              "h-12 w-full rounded-xl border-0 text-base text-white",
+              "h-11 w-full rounded-xl text-sm font-semibold",
               type === "expense"
-                ? "gradient-coral"
-                : type === "income"
-                  ? "gradient-primary"
-                  : "bg-sky-500 hover:bg-sky-500/90",
+                ? "bg-rose-600 text-white shadow-[0_3px_12px_-3px_rgba(225,29,72,0.4)] hover:bg-rose-600/92"
+                : type === "transfer"
+                  ? "bg-sky-600 text-white shadow-[0_3px_12px_-3px_rgba(2,132,199,0.4)] hover:bg-sky-600/92"
+                  : "bg-primary text-primary-foreground hover:bg-primary/92",
             )}
           >
             {editing ? "Lưu thay đổi" : "Lưu giao dịch"}

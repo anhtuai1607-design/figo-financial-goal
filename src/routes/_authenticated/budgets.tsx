@@ -77,7 +77,7 @@ function BudgetsPage() {
       mood: "happy",
       message: editing
         ? `Đã cập nhật hạn mức ${formatVnd(value)}.`
-        : `Đã đặt hạn mức ${formatVnd(value)}! Mình sẽ nhắc nếu sắp chạm ngưỡng.`,
+        : `Đã đặt hạn mức ${formatVnd(value)} cho tháng.`,
     });
     setOpen(false);
   };
@@ -86,14 +86,14 @@ function BudgetsPage() {
     <div>
       <PageHeader
         title="Ngân sách tháng"
-        subtitle="Kiểm soát chi tiêu trước khi tiền rời khỏi ví"
+        subtitle="Kiểm soát chi tiêu trước khi vượt kế hoạch"
         action={
           <div className="flex gap-2">
             <Input
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="w-40"
+              className="w-40 tabular-nums"
             />
             <Button onClick={() => showForm()}>
               <Plus /> Thêm hạn mức
@@ -117,39 +117,53 @@ function BudgetsPage() {
             return (
               <motion.div
                 key={row.budget.id}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: idx * 0.04, duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Panel>
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(
-                        "flex size-11 shrink-0 items-center justify-center rounded-xl",
+                        "flex size-10 shrink-0 items-center justify-center rounded-lg border",
                         row.status === "over"
-                          ? "bg-destructive/12 text-destructive"
+                          ? "border-destructive/25 bg-destructive/10 text-destructive"
                           : row.status === "warning"
-                            ? "bg-warning/25 text-warning-foreground"
-                            : "bg-accent text-primary",
+                            ? "border-amber-600/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            : "border-border bg-muted/60 text-primary",
                       )}
                     >
                       {row.status === "over" ? (
-                        <AlertTriangle className="size-5" />
+                        <AlertTriangle className="size-[18px]" strokeWidth={1.5} />
                       ) : Icon ? (
-                        <Icon className="size-5" />
+                        <Icon className="size-[18px]" strokeWidth={1.5} />
                       ) : (
-                        <CheckCircle2 className="size-5" />
+                        <CheckCircle2 className="size-[18px]" strokeWidth={1.5} />
                       )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h2 className="font-bold">{category?.name ?? "Toàn bộ ví"}</h2>
-                          <p className="text-xs text-muted-foreground">
+                          <h2 className="text-base font-semibold">
+                            {category?.name ?? "Toàn bộ ví"}
+                          </h2>
+                          <p className="text-xs text-muted-foreground tabular-nums">
                             {row.budget.month === "*"
                               ? "Lặp lại hàng tháng"
                               : `Riêng tháng ${month.slice(5)}/${month.slice(0, 4)}`}{" "}
-                            · {statusText}
+                            ·{" "}
+                            <span
+                              className={cn(
+                                "font-medium",
+                                row.status === "over"
+                                  ? "text-destructive"
+                                  : row.status === "warning"
+                                    ? "text-amber-700 dark:text-amber-400"
+                                    : "text-income",
+                              )}
+                            >
+                              {statusText}
+                            </span>
                           </p>
                         </div>
                         <div className="flex">
@@ -175,36 +189,40 @@ function BudgetsPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="mt-5 flex items-end justify-between">
+                      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
                         <div>
-                          <p className="text-xs text-muted-foreground">Đã chi</p>
-                          <p className="font-extrabold tabular-nums">{formatVnd(row.spent)}</p>
+                          <p className="text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+                            Đã chi
+                          </p>
+                          <p className="mt-0.5 text-base font-bold tabular-nums">
+                            {formatVnd(row.spent)}
+                          </p>
                         </div>
                         <p
                           className={cn(
-                            "text-sm font-bold tabular-nums",
+                            "text-sm font-semibold tabular-nums",
                             row.status === "over"
                               ? "text-destructive"
                               : row.status === "warning"
-                                ? "text-warning-foreground"
+                                ? "text-amber-700 dark:text-amber-400"
                                 : "text-primary",
                           )}
                         >
                           {row.pct}%
                         </p>
                       </div>
-                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                         <motion.div
                           initial={{ scaleX: 0 }}
                           animate={{ scaleX: Math.min(100, row.pct) / 100 }}
-                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                          transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
                           style={{ transformOrigin: "left" }}
                           className={cn(
                             "h-full w-full rounded-full",
                             row.status === "over"
                               ? "bg-destructive"
                               : row.status === "warning"
-                                ? "bg-warning"
+                                ? "bg-amber-600 dark:bg-amber-500"
                                 : "bg-primary",
                           )}
                         />
@@ -228,7 +246,7 @@ function BudgetsPage() {
         <Panel>
           <EmptyState
             title="Chưa có hạn mức"
-            text="Tạo hạn mức đầu tiên để FiGo cảnh báo khi chi tiêu gần vượt kế hoạch."
+            text="Thiết lập hạn mức chi tiêu đầu tiên để theo dõi và nhận cảnh báo sớm."
             action={
               <Button onClick={() => showForm()}>
                 <Plus /> Thêm hạn mức
@@ -239,7 +257,7 @@ function BudgetsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl">
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa hạn mức" : "Thêm hạn mức"}</DialogTitle>
             <DialogDescription>Chọn danh mục và số tiền tối đa muốn chi.</DialogDescription>
@@ -258,7 +276,7 @@ function BudgetsPage() {
                 onChange={(e) => setLimit(formatVndInput(parseVndInput(e.target.value)))}
                 inputMode="numeric"
                 placeholder="3.000.000"
-                className="mt-1 h-11"
+                className="mt-1 h-10 tabular-nums"
               />
             </div>
             <div>

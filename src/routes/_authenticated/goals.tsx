@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState, type FormEvent } from "react";
 import { motion } from "motion/react";
-import { CalendarDays, CheckCircle2, Coins, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Coins,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Target,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +46,12 @@ export const Route = createFileRoute("/_authenticated/goals")({
   }),
   component: GoalsPage,
 });
+
+const DEPOSIT_CHIPS = [
+  { label: "+100k", value: 100_000 },
+  { label: "+500k", value: 500_000 },
+  { label: "+1tr", value: 1_000_000 },
+];
 
 function GoalsPage() {
   const goals = useFiGo((s) => s.goals);
@@ -91,7 +106,7 @@ function GoalsPage() {
         name: name.trim(),
         target: value,
         deadline: new Date(`${deadline}T23:59:59`).toISOString(),
-        emoji: "🎯",
+        emoji: "",
         image,
       });
     }
@@ -100,7 +115,7 @@ function GoalsPage() {
       mood: editing ? "happy" : "celebrate",
       message: editing
         ? `Đã cập nhật mục tiêu "${name.trim()}".`
-        : `Mục tiêu "${name.trim()}" đã sẵn sàng! Mình sẽ cổ vũ bạn mỗi ngày.`,
+        : `Đã khởi tạo quỹ mục tiêu "${name.trim()}".`,
     });
     setOpen(false);
   };
@@ -123,8 +138,8 @@ function GoalsPage() {
     triggerMascot({
       mood: "celebrate",
       message: finished
-        ? `Chúc mừng! Bạn đã hoàn thành 100% mục tiêu "${depositing.name}"!`
-        : `Tuyệt quá! +${formatVnd(value)} vừa được góp vào "${depositing.name}".`,
+        ? `Hoàn thành 100% mục tiêu "${depositing.name}".`
+        : `Đã góp +${formatVnd(value)} vào quỹ "${depositing.name}".`,
     });
     setDepositing(null);
   };
@@ -133,7 +148,7 @@ function GoalsPage() {
     <div>
       <PageHeader
         title="Mục tiêu tiết kiệm"
-        subtitle="Biến kế hoạch lớn thành những bước nhỏ mỗi tháng"
+        subtitle="Phân bổ kế hoạch tích luỹ theo lộ trình định kỳ"
         action={
           <Button onClick={() => show()}>
             <Plus /> Tạo mục tiêu
@@ -148,24 +163,24 @@ function GoalsPage() {
             return (
               <motion.div
                 key={goal.id}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -2 }}
-                transition={{ delay: idx * 0.04, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: idx * 0.04, duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Panel className="relative h-full overflow-hidden">
-                  <div className="relative h-36 overflow-hidden rounded-xl">
+                  <div className="relative h-36 overflow-hidden rounded-xl border border-border bg-muted/50">
                     {goal.image ? (
                       <img src={goal.image} alt={goal.name} className="size-full object-cover" />
                     ) : (
-                      <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
-                        <ImagePlus className="size-8 opacity-60" />
+                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                        <Target className="size-8 opacity-45" strokeWidth={1.5} />
                       </div>
                     )}
-                    <div className="absolute right-1.5 top-1.5 flex rounded-full bg-black/35 backdrop-blur [&_button]:text-white">
+                    <div className="absolute right-1.5 top-1.5 flex rounded-lg border border-white/15 bg-black/55 backdrop-blur-sm [&_button]:text-white">
                       <Button
                         size="icon"
                         variant="ghost"
+                        className="size-8"
                         onClick={() => show(goal)}
                         aria-label="Sửa mục tiêu"
                       >
@@ -174,6 +189,7 @@ function GoalsPage() {
                       <Button
                         size="icon"
                         variant="ghost"
+                        className="size-8 hover:text-red-300"
                         onClick={() => {
                           if (
                             !window.confirm(
@@ -185,37 +201,38 @@ function GoalsPage() {
                           toast.success("Đã xoá mục tiêu.");
                         }}
                         aria-label="Xoá mục tiêu"
-                        className="hover:text-destructive"
                       >
                         <Trash2 />
                       </Button>
                     </div>
                   </div>
-                  <h2 className="mt-4 text-lg font-bold">{goal.name}</h2>
+                  <h2 className="mt-4 text-base font-semibold">{goal.name}</h2>
                   <p className="mt-1 text-sm text-muted-foreground tabular-nums">
                     {formatVnd(goal.saved)} / {formatVnd(goal.target)}
                   </p>
-                  <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
                     <motion.div
                       initial={{ scaleX: 0 }}
                       animate={{ scaleX: st.pct / 100 }}
-                      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       style={{ transformOrigin: "left" }}
-                      className="h-full w-full rounded-full gradient-primary"
+                      className="h-full w-full rounded-full bg-primary"
                     />
                   </div>
                   <div className="mt-2 flex justify-between text-xs tabular-nums">
-                    <strong className="text-primary">{st.pct}%</strong>
+                    <strong className="font-semibold text-primary">{st.pct}%</strong>
                     <span className="text-muted-foreground">Còn {formatVnd(st.remaining)}</span>
                   </div>
-                  <div className="mt-5 rounded-xl bg-muted/70 p-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="size-4" /> Hạn {formatDate(goal.deadline)} ·{" "}
+                  <div className="mt-4 rounded-xl border border-border bg-muted/35 p-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 tabular-nums">
+                      <CalendarDays className="size-3.5 shrink-0" strokeWidth={1.5} /> Hạn{" "}
+                      {formatDate(goal.deadline)} ·{" "}
                       {st.daysLeft >= 0 ? `${st.daysLeft} ngày nữa` : `quá ${-st.daysLeft} ngày`}
                     </div>
                     {!st.done && (
                       <div className="mt-2 flex items-center gap-2 tabular-nums">
-                        <Coins className="size-4" /> Gợi ý góp {formatVnd(st.perMonth)}/tháng
+                        <Coins className="size-3.5 shrink-0" strokeWidth={1.5} /> Gợi ý góp{" "}
+                        {formatVnd(st.perMonth)}/tháng
                       </div>
                     )}
                   </div>
@@ -248,7 +265,7 @@ function GoalsPage() {
         <Panel>
           <EmptyState
             title="Chưa có mục tiêu"
-            text="Tạo quỹ mua laptop, du lịch hoặc quỹ khẩn cấp đầu tiên."
+            text="Khởi tạo quỹ dự phòng hoặc mục tiêu tài sản đầu tiên."
             action={
               <Button onClick={() => show()}>
                 <Plus /> Tạo mục tiêu
@@ -259,10 +276,10 @@ function GoalsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl">
+        <DialogContent className="w-[calc(100%-1.5rem)] rounded-xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa mục tiêu" : "Tạo mục tiêu"}</DialogTitle>
-            <DialogDescription>FiGo sẽ tính số tiền nên góp mỗi tháng.</DialogDescription>
+            <DialogDescription>FiGo sẽ tính mức tích lũy khuyến nghị mỗi tháng.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -270,7 +287,7 @@ function GoalsPage() {
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ví dụ: Mua xe máy"
+                placeholder="Ví dụ: Quỹ dự phòng 6 tháng"
                 className="mt-1"
               />
             </div>
@@ -280,7 +297,7 @@ function GoalsPage() {
                 value={target}
                 onChange={(e) => setTarget(formatVndInput(parseVndInput(e.target.value)))}
                 inputMode="numeric"
-                className="mt-1"
+                className="mt-1 tabular-nums"
               />
             </div>
             <div>
@@ -289,11 +306,11 @@ function GoalsPage() {
                 type="date"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="mt-1"
+                className="mt-1 tabular-nums"
               />
             </div>
             <div>
-              <Label>Ảnh bạn mơ ước</Label>
+              <Label>Ảnh minh hoạ (tuỳ chọn)</Label>
               <input
                 ref={fileRef}
                 type="file"
@@ -315,7 +332,7 @@ function GoalsPage() {
                 }}
               />
               {image ? (
-                <div className="relative mt-2 overflow-hidden rounded-xl">
+                <div className="relative mt-2 overflow-hidden rounded-xl border border-border">
                   <img src={image} alt="Ảnh mục tiêu" className="h-40 w-full object-cover" />
                   <Button
                     type="button"
@@ -332,10 +349,10 @@ function GoalsPage() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="mt-2 flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-sm text-muted-foreground"
+                  className="mt-2 flex h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:border-primary/40"
                 >
-                  <ImagePlus className="size-6" />
-                  Tải ảnh thứ bạn muốn mua, muốn có
+                  <ImagePlus className="size-5" strokeWidth={1.5} />
+                  Tải ảnh mục tiêu
                 </button>
               )}
             </div>
@@ -347,7 +364,7 @@ function GoalsPage() {
       </Dialog>
 
       <Dialog open={Boolean(depositing)} onOpenChange={(v) => !v && setDepositing(null)}>
-        <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl">
+        <DialogContent className="w-[calc(100%-1.5rem)] rounded-xl">
           <DialogHeader>
             <DialogTitle>Nạp quỹ</DialogTitle>
             <DialogDescription>{depositing?.name}</DialogDescription>
@@ -359,12 +376,39 @@ function GoalsPage() {
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(formatVndInput(parseVndInput(e.target.value)))}
                 inputMode="numeric"
-                className="mt-1 h-11"
+                className="mt-1 h-10 tabular-nums"
               />
               {depositing && (
-                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  Mục tiêu còn cần {formatVnd(Math.max(0, depositing.target - depositing.saved))}
-                </p>
+                <>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {DEPOSIT_CHIPS.map((c) => (
+                      <button
+                        key={c.label}
+                        type="button"
+                        onClick={() =>
+                          setDepositAmount(formatVndInput(parseVndInput(depositAmount) + c.value))
+                        }
+                        className="tactile rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium tabular-nums hover:border-primary/40 hover:bg-accent/60"
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDepositAmount(
+                          formatVndInput(Math.max(0, depositing.target - depositing.saved)),
+                        )
+                      }
+                      className="tactile rounded-lg border border-primary/25 bg-accent px-2.5 py-1 text-xs font-medium text-primary hover:bg-accent/80"
+                    >
+                      Đủ mục tiêu
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground tabular-nums">
+                    Mục tiêu còn cần {formatVnd(Math.max(0, depositing.target - depositing.saved))}
+                  </p>
+                </>
               )}
             </div>
             <div>

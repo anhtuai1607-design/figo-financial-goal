@@ -123,11 +123,9 @@ function AssistantPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const end = useRef<HTMLDivElement>(null);
 
-  // Khởi tạo đọc lịch sử từ localStorage
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    // Chuyển lịch sử cũ (lưu riêng trên máy này) lên cloud một lần.
     const old = loadSessions();
     let list = sessions;
     if (old.length > 0) {
@@ -149,7 +147,6 @@ function AssistantPage() {
     }
   }, []);
 
-  // Khi thiết bị khác thêm tin nhắn vào cuộc trò chuyện đang mở, cập nhật theo.
   useEffect(() => {
     if (busy || !currentId) return;
     const cur = sessions.find((x) => x.id === currentId);
@@ -208,10 +205,9 @@ function AssistantPage() {
         setMsgs(fullMsgs);
         triggerMascot({
           mood: "happy",
-          message: "Trợ lý AI vừa trả lời xong! Bạn muốn hỏi thêm gì không?",
+          message: "Báo cáo phân tích từ Trợ lý AI đã sẵn sàng.",
         });
 
-        // Lưu / cập nhật phiên trò chuyện
         const now = new Date().toISOString();
         let targetId = currentId;
         let updatedList: ChatSession[];
@@ -248,50 +244,36 @@ function AssistantPage() {
   return (
     <div className="flex min-h-[calc(100dvh-12rem)] flex-col">
       <PageHeader
-        title="Trợ lý AI"
-        subtitle="Hỏi bất cứ điều gì về thu chi của bạn"
+        title="Trợ lý tài chính"
+        subtitle="Phân tích trực tiếp trên sổ thu chi của bạn"
         action={
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setHistoryOpen(true)}
-              className="rounded-xl"
-            >
-              <History className="size-4" />
+            <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+              <History />
               Lịch sử
               {sessions.length > 0 && (
-                <span className="ml-1 rounded-full bg-accent px-1.5 py-0.2 text-[10px] font-bold text-accent-foreground">
+                <span className="ml-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">
                   {sessions.length}
                 </span>
               )}
             </Button>
-            <Button
-              size="sm"
-              onClick={startNewChat}
-              className="rounded-xl gradient-primary text-primary-foreground"
-            >
-              <Plus className="size-4" />
-              Đoạn chat mới
+            <Button size="sm" onClick={startNewChat}>
+              <Plus />
+              Phiên mới
             </Button>
           </div>
         }
       />
 
-      {/* Drawer Lịch sử trò chuyện */}
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader className="text-left">
             <SheetTitle>Lịch sử trò chuyện</SheetTitle>
-            <SheetDescription>Các câu hỏi và phân tích tài chính trước đây</SheetDescription>
+            <SheetDescription>Các phân tích tài chính đã lưu</SheetDescription>
           </SheetHeader>
           <div className="mt-4 flex flex-col gap-2">
-            <Button
-              onClick={startNewChat}
-              variant="outline"
-              className="w-full justify-start gap-2 rounded-2xl"
-            >
-              <Plus className="size-4" />
+            <Button onClick={startNewChat} variant="outline" className="w-full justify-start gap-2">
+              <Plus />
               Cuộc trò chuyện mới
             </Button>
           </div>
@@ -304,18 +286,18 @@ function AssistantPage() {
                     key={s.id}
                     onClick={() => selectSession(s)}
                     className={cn(
-                      "group flex cursor-pointer items-start justify-between gap-3 rounded-2xl p-3 text-left transition-colors",
+                      "group flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors",
                       isActive
-                        ? "bg-accent text-accent-foreground shadow-xs"
-                        : "bg-muted/50 hover:bg-muted text-foreground",
+                        ? "border-primary/30 bg-accent text-accent-foreground"
+                        : "border-border bg-card hover:bg-muted/50 text-foreground",
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 font-semibold text-sm">
-                        <MessageSquare className="size-3.5 shrink-0 opacity-70" />
+                      <div className="flex items-center gap-1.5 text-sm font-medium">
+                        <MessageSquare className="size-3.5 shrink-0 opacity-70" strokeWidth={1.5} />
                         <p className="truncate">{s.title}</p>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                         {formatDate(s.updatedAt, "HH:mm · dd/MM/yyyy")} · {s.messages.length} tin
                       </p>
                     </div>
@@ -326,7 +308,7 @@ function AssistantPage() {
                       className="size-8 shrink-0 text-muted-foreground opacity-70 hover:opacity-100 hover:text-destructive"
                       aria-label="Xoá cuộc trò chuyện"
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 />
                     </Button>
                   </div>
                 );
@@ -334,7 +316,6 @@ function AssistantPage() {
               {sessions.length === 0 && (
                 <div className="py-12 text-center text-sm text-muted-foreground">
                   <p>Chưa có cuộc trò chuyện nào được lưu.</p>
-                  <p className="mt-1 text-xs">Hãy đặt câu hỏi để bắt đầu!</p>
                 </div>
               )}
             </div>
@@ -342,34 +323,31 @@ function AssistantPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Vùng tin nhắn */}
       <div className="flex-1 space-y-3 pb-4">
         {!msgs.length && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
             className="ios-card p-6 text-center"
           >
-            <div className="mx-auto flex justify-center">
-              <SquirrelMascot mood="thinking" size={84} />
+            <div className="mx-auto flex size-16 items-center justify-center rounded-xl border border-border bg-muted/45">
+              <SquirrelMascot mood="thinking" size={52} />
             </div>
-            <p className="mt-2 font-bold">Trợ lý đọc sổ thu chi của bạn để trả lời</p>
+            <p className="mt-3 text-base font-semibold">Phân tích sổ thu chi cá nhân</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Đặt câu hỏi hoặc chọn một trong các gợi ý bên dưới:
+              Chọn một câu hỏi gợi ý hoặc nhập nội dung cần tra cứu bên dưới.
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {SUGGEST.map((q) => (
-                <motion.button
+                <button
                   key={q}
                   type="button"
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => send(q)}
-                  className="rounded-xl border border-border/50 bg-muted/70 px-3.5 py-2.5 text-left text-sm transition-colors hover:border-primary/40 hover:bg-accent/50"
+                  className="tactile rounded-xl border border-border bg-muted/45 px-3.5 py-2.5 text-left text-sm font-medium transition-colors hover:border-primary/40 hover:bg-accent/55"
                 >
                   {q}
-                </motion.button>
+                </button>
               ))}
             </div>
           </motion.div>
@@ -377,16 +355,16 @@ function AssistantPage() {
         {msgs.map((m, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className={m.role === "user" ? "flex justify-end" : "flex justify-start"}
           >
             <div
               className={
                 m.role === "user"
-                  ? "max-w-[85%] rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground shadow-sm"
-                  : "ios-card max-w-[90%] whitespace-pre-wrap rounded-3xl rounded-bl-md px-4 py-3 text-sm leading-relaxed"
+                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs"
+                  : "ios-card max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed tabular-nums"
               }
             >
               {m.content.replace(/\*\*/g, "")}
@@ -394,7 +372,7 @@ function AssistantPage() {
           </motion.div>
         ))}
         {busy && (
-          <div className="ios-card flex w-fit items-center gap-2 rounded-3xl px-4 py-3 text-sm text-muted-foreground">
+          <div className="ios-card flex w-fit items-center gap-2 rounded-2xl px-4 py-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1" aria-hidden>
               <span
                 className="size-1.5 rounded-full bg-primary"
@@ -409,32 +387,31 @@ function AssistantPage() {
                 style={{ animation: "typing-dot 1.1s 0.36s infinite ease-in-out" }}
               />
             </span>
-            <span>Đang phân tích…</span>
+            <span>Đang phân tích dữ liệu…</span>
           </div>
         )}
         <div ref={end} />
       </div>
 
-      {/* Thanh nhập câu hỏi */}
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           send(text);
         }}
-        className="sticky bottom-24 flex gap-2 rounded-full border bg-card/90 p-1.5 shadow-glass backdrop-blur-xl lg:bottom-4"
+        className="sticky bottom-24 flex gap-2 rounded-xl border border-border bg-card/95 p-1.5 shadow-[0_8px_24px_-12px_rgba(9,9,11,0.16)] backdrop-blur-xl lg:bottom-4"
       >
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Hỏi trợ lý…"
-          className="h-11 rounded-full border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+          placeholder="Đặt câu hỏi về thu chi của bạn…"
+          className="h-10 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
           aria-label="Câu hỏi"
         />
         <Button
           type="submit"
           size="icon"
           disabled={busy || !text.trim()}
-          className="size-11 rounded-full"
+          className="size-10 shrink-0 rounded-lg"
           aria-label="Gửi"
         >
           <ArrowUp />

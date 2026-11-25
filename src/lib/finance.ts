@@ -13,6 +13,7 @@ import {
   parseISO,
   getDaysInMonth,
   differenceInCalendarDays,
+  startOfDay,
 } from "date-fns";
 import type { Account, Bill, Budget, Goal, Transaction } from "./types";
 import { toVnd, monthKey, formatVnd } from "./format";
@@ -36,7 +37,13 @@ export function totalBalance(accounts: Account[], txs: Transaction[]) {
 }
 
 export function inMonth(txs: Transaction[], key = monthKey()) {
-  return txs.filter((t) => t.date.startsWith(key));
+  return txs.filter((t) => {
+    try {
+      return monthKey(t.date) === key;
+    } catch {
+      return t.date.startsWith(key);
+    }
+  });
 }
 
 export function monthTotals(txs: Transaction[], key = monthKey()) {
@@ -139,7 +146,7 @@ export function billStatus(bill: Bill, key = monthKey()) {
   const days = getDaysInMonth(new Date(y, m - 1));
   const due = new Date(y, m - 1, Math.min(bill.dueDay, days));
   const paid = bill.paidMonths.includes(key);
-  const daysLeft = differenceInCalendarDays(due, new Date());
+  const daysLeft = differenceInCalendarDays(due, startOfDay(new Date()));
   return {
     due,
     paid,
@@ -151,7 +158,10 @@ export function billStatus(bill: Bill, key = monthKey()) {
 
 export function goalStats(goal: Goal) {
   const pct = goal.target ? Math.min(100, Math.round((goal.saved / goal.target) * 1000) / 10) : 0;
-  const daysLeft = differenceInCalendarDays(parseISO(goal.deadline), new Date());
+  const daysLeft = differenceInCalendarDays(
+    startOfDay(parseISO(goal.deadline)),
+    startOfDay(new Date()),
+  );
   const remaining = Math.max(0, goal.target - goal.saved);
   const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
   const perMonth = toVnd(remaining / monthsLeft);

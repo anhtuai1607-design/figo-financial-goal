@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { TransactionDetail } from "@/components/transactions/TransactionDetail";
 import type { Transaction } from "@/lib/types";
 import { toast } from "sonner";
@@ -21,11 +21,12 @@ import {
   TransactionRow,
   metaFor,
 } from "@/components/finance/Common";
-import { CATEGORIES } from "@/lib/categories";
+import { categoriesByType, getCategory } from "@/lib/categories";
 import { exportCsv, exportXlsx } from "@/lib/export";
 import { monthKey } from "@/lib/format";
 import { useFiGo } from "@/lib/store";
 import { useUI } from "@/lib/ui-store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   head: () => ({
@@ -36,6 +37,13 @@ export const Route = createFileRoute("/_authenticated/transactions")({
   }),
   component: TransactionsPage,
 });
+
+const TYPE_TABS = [
+  { value: "all", label: "Tất cả" },
+  { value: "expense", label: "Chi" },
+  { value: "income", label: "Thu" },
+  { value: "transfer", label: "Chuyển quỹ" },
+] as const;
 
 function TransactionsPage() {
   const txs = useFiGo((s) => s.transactions);
@@ -48,22 +56,36 @@ function TransactionsPage() {
   const [category, setCategory] = useState("all");
   const [month, setMonth] = useState(monthKey());
 
+  const customCats = useFiGo((s) => s.customCategories);
+  const allCategories = useMemo(
+    () => [
+      ...categoriesByType("expense"),
+      ...categoriesByType("income"),
+      ...categoriesByType("transfer"),
+    ],
+    [customCats],
+  );
+
   const filtered = useMemo(
     () =>
       txs.filter((tx) => {
         const q = search.toLocaleLowerCase("vi");
+        let txMonth = "";
+        try {
+          txMonth = monthKey(tx.date);
+        } catch {
+          txMonth = tx.date.slice(0, 7);
+        }
         return (
           (!q ||
             tx.note?.toLocaleLowerCase("vi").includes(q) ||
-            CATEGORIES.find((c) => c.id === tx.categoryId)
-              ?.name.toLocaleLowerCase("vi")
-              .includes(q)) &&
+            getCategory(tx.categoryId).name.toLocaleLowerCase("vi").includes(q)) &&
           (type === "all" || tx.type === type) &&
           (category === "all" || tx.categoryId === category) &&
-          (!month || tx.date.startsWith(month))
+          (!month || txMonth === month)
         );
       }),
-    [txs, search, type, category, month],
+    [txs, search, type, category, month, customCats],
   );
 
   const [detail, setDetail] = useState<Transaction | null>(null);
@@ -78,56 +100,34 @@ function TransactionsPage() {
     <div>
       <PageHeader
         title="Sổ thu chi"
-        subtitle={`${filtered.length} kết quả phù hợp`}
+        subtitle={`${filtered.length} giao dịch phù hợp`}
         action={
-          <Button onClick={() => openTx()} className="gradient-coral text-coral-foreground">
-            <Plus /> Ghi thu chi
+          <Button onClick={() => openTx()}>
+            <Plus /> Ghi giao dịch
           </Button>
         }
       />
 
-      <Panel className="mb-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1.5fr)_repeat(3,minmax(120px,1fr))]">
-          <div className="relative min-w-0 sm:col-span-2 xl:col-span-1">
-            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm ghi chú, danh mục..."
-              className="pl-9"
-            />
+      <Panel className="mb-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="grid w-full grid-cols-4 rounded-lg border border-border bg-muted p-0.5 text-xs font-medium sm:w-auto">
+            {TYPE_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setType(tab.value)}
+                className={cn(
+                  "tactile rounded-md px-3 py-1.5 transition-colors",
+                  type === tab.value
+                    ? "bg-card font-semibold text-primary shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả loại</SelectItem>
-              <SelectItem value="income">Thu</SelectItem>
-              <SelectItem value="expense">Chi</SelectItem>
-              <SelectItem value="transfer">Chuyển khoản</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả danh mục</SelectItem>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            aria-label="Chọn tháng"
-          />
-          <div className="flex gap-2 sm:col-span-2 xl:col-span-4">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -152,52 +152,99 @@ function TransactionsPage() {
             </Button>
           </div>
         </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="relative min-w-0">
+            <Search
+              className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground"
+              strokeWidth={1.5}
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm ghi chú, danh mục..."
+              className="pl-9 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Xoá từ khoá tìm kiếm"
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả danh mục</SelectItem>
+              {allCategories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            aria-label="Chọn tháng"
+            className="tabular-nums"
+          />
+        </div>
       </Panel>
 
       <Panel className="p-2 sm:p-3">
         {filtered.length ? (
-          filtered.map((tx, idx) => (
-            <motion.div
-              key={tx.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(idx * 0.02, 0.25), duration: 0.18 }}
-              className="group flex items-center"
-            >
-              <div className="min-w-0 flex-1">
-                <TransactionRow
-                  tx={tx}
-                  account={accounts.find((a) => a.id === tx.accountId)?.name}
-                  onClick={() => setDetail(tx)}
-                />
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => openTx({ tx })}
-                className="shrink-0 text-muted-foreground hover:text-primary"
-                aria-label="Sửa giao dịch"
+          <div className="divide-y divide-border/60">
+            {filtered.map((tx, idx) => (
+              <motion.div
+                key={tx.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(idx * 0.015, 0.2), duration: 0.18 }}
+                className="group flex items-center"
               >
-                <Pencil />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => deleteTx(tx.id)}
-                className="shrink-0 text-muted-foreground hover:text-destructive"
-                aria-label="Xoá giao dịch"
-              >
-                <Trash2 />
-              </Button>
-            </motion.div>
-          ))
+                <div className="min-w-0 flex-1">
+                  <TransactionRow
+                    tx={tx}
+                    account={accounts.find((a) => a.id === tx.accountId)?.name}
+                    onClick={() => setDetail(tx)}
+                  />
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => openTx({ tx })}
+                  className="shrink-0 text-muted-foreground hover:text-primary"
+                  aria-label="Sửa giao dịch"
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => deleteTx(tx.id)}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label="Xoá giao dịch"
+                >
+                  <Trash2 />
+                </Button>
+              </motion.div>
+            ))}
+          </div>
         ) : (
           <EmptyState
             title="Không tìm thấy giao dịch"
-            text="Hãy đổi bộ lọc hoặc thêm giao dịch mới."
+            text="Thử thay đổi bộ lọc hoặc ghi nhận một giao dịch mới."
             action={
               <Button onClick={() => openTx()}>
-                <Plus /> Ghi thu chi
+                <Plus /> Ghi giao dịch
               </Button>
             }
           />

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 type Theme = "light" | "dark";
 const KEY = "figo-theme";
 
-export const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("${KEY}");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("${KEY}")||"light";document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})();`;
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>("light");

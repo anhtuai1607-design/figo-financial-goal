@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AnimatedVnd,
+  CopyButton,
   PageHeader,
   Panel,
   TransactionRow,
@@ -58,23 +59,23 @@ function QuickAction({
 }) {
   const iconTone =
     tone === "expense"
-      ? "bg-expense/12 text-expense"
+      ? "border-rose-500/20 bg-rose-500/10 text-expense"
       : tone === "income"
-        ? "bg-income/12 text-income"
+        ? "border-income/25 bg-accent text-income"
         : tone === "bill"
-          ? "bg-amber-500/12 text-amber-600 dark:text-amber-400"
-          : "bg-primary/12 text-primary";
+          ? "border-amber-500/25 bg-amber-500/12 text-amber-600 dark:text-amber-400"
+          : "border-sky-500/25 bg-sky-500/10 text-sky-600 dark:text-sky-400";
   const inner = (
     <motion.div
       whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-      className="ios-card flex min-h-20 flex-col items-center justify-center gap-2 px-2 py-3 text-center hover:border-primary/40"
+      whileTap={{ scale: 0.95 }}
+      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+      className="ios-card flex min-h-20 flex-col items-center justify-center gap-2 px-2 py-3 text-center hover:border-primary/35 hover:shadow-md"
     >
-      <span className={cn("flex size-9 items-center justify-center rounded-xl", iconTone)}>
+      <span className={cn("flex size-9 items-center justify-center rounded-xl border", iconTone)}>
         {icon}
       </span>
-      <span className="text-[11px] font-semibold whitespace-nowrap text-foreground">{label}</span>
+      <span className="text-xs font-semibold whitespace-nowrap text-foreground">{label}</span>
     </motion.div>
   );
   if (to)
@@ -125,34 +126,41 @@ function Dashboard() {
       />
 
       <motion.section
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-        className="hero-card group relative mb-5 overflow-hidden rounded-3xl p-5 text-primary-foreground sm:p-7"
+        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+        className="hero-card relative mb-5 overflow-hidden rounded-2xl p-5 text-white sm:p-7"
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-          style={{ animation: "shimmer 3.2s ease-in-out infinite" }}
-        />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-primary-foreground/75">Tổng số dư ghi sổ</p>
-            <p className="mt-2 break-words text-3xl font-extrabold tracking-tight sm:text-4xl">
-              <AnimatedVnd value={balanceTotal} />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-100">
+              Tổng số dư ghi sổ
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
+              <p className="break-words text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+                <AnimatedVnd value={balanceTotal} />
+              </p>
+              <CopyButton
+                value={formatVnd(balanceTotal)}
+                label="Đã sao chép tổng số dư"
+                ariaLabel="Sao chép tổng số dư"
+                className="border-white/25 bg-white/15 text-white hover:border-white/40 hover:bg-white/25 hover:text-white"
+              >
+                <span>Sao chép</span>
+              </CopyButton>
+            </div>
           </div>
           {saveRate !== null && (
-            <div className="min-w-36 rounded-2xl bg-white/12 px-3.5 py-2.5 backdrop-blur-sm">
+            <div className="min-w-44 rounded-xl border border-white/20 bg-white/12 px-3.5 py-2.5 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-primary-foreground/75">Giữ lại tháng này</span>
-                <strong className="tabular-nums">{saveRate}%</strong>
+                <span className="text-emerald-50">Tỷ lệ giữ lại</span>
+                <strong className="font-bold tabular-nums text-white">{saveRate}%</strong>
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/20">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
                 <motion.div
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: saveRate / 100 }}
-                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   style={{ transformOrigin: "left" }}
                   className="h-full w-full rounded-full bg-emerald-200"
                 />
@@ -160,16 +168,20 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="relative mt-5 grid grid-cols-2 gap-3 border-t border-white/12 pt-4 text-sm">
+        <div className="relative mt-5 grid grid-cols-2 gap-4 border-t border-white/20 pt-4 text-sm">
           <div>
-            <p className="text-xs text-primary-foreground/65">Thu tháng này</p>
-            <p className="font-bold">
+            <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-emerald-100">
+              Thu tháng này
+            </p>
+            <p className="mt-0.5 text-base font-bold tabular-nums">
               <AnimatedVnd value={totals.income} />
             </p>
           </div>
           <div>
-            <p className="text-xs text-primary-foreground/65">Chi tháng này</p>
-            <p className="font-bold">
+            <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-emerald-100">
+              Chi tháng này
+            </p>
+            <p className="mt-0.5 text-base font-bold tabular-nums">
               <AnimatedVnd value={totals.expense} />
             </p>
           </div>
@@ -178,25 +190,25 @@ function Dashboard() {
 
       <div className="mb-6 grid grid-cols-4 gap-2.5">
         <QuickAction
-          icon={<ArrowUpRight className="size-5" />}
+          icon={<ArrowUpRight className="size-[18px]" strokeWidth={1.5} />}
           label="Thêm chi"
           tone="expense"
           onClick={() => openTx({ type: "expense" })}
         />
         <QuickAction
-          icon={<ArrowDownLeft className="size-5" />}
+          icon={<ArrowDownLeft className="size-[18px]" strokeWidth={1.5} />}
           label="Thêm thu"
           tone="income"
           onClick={() => openTx({ type: "income" })}
         />
         <QuickAction
-          icon={<CalendarClock className="size-5" />}
-          label="Hoá đơn"
+          icon={<CalendarClock className="size-[18px]" strokeWidth={1.5} />}
+          label="Hóa đơn"
           tone="bill"
           to="/bills"
         />
         <QuickAction
-          icon={<Sparkles className="size-5" />}
+          icon={<Sparkles className="size-[18px]" strokeWidth={1.5} />}
           label="Hỏi AI"
           tone="ai"
           to="/assistant"
@@ -204,8 +216,10 @@ function Dashboard() {
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold">Tài khoản của bạn</h2>
-        <Button asChild variant="ghost" size="sm">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+          Tài khoản của bạn
+        </h2>
+        <Button asChild variant="ghost" size="sm" className="text-xs">
           <Link to="/settings">
             Quản lý <ArrowRight />
           </Link>
@@ -214,13 +228,15 @@ function Dashboard() {
       {accounts.length === 0 ? (
         <Panel className="mb-5 text-center">
           <div className="mx-auto flex flex-col items-center">
-            <SquirrelMascot mood="encourage" size={68} className="mb-1" />
-            <p className="text-sm font-bold">Bắt đầu với nguồn tiền đầu tiên</p>
+            <div className="mb-3 flex size-14 items-center justify-center rounded-xl border border-border bg-muted/50">
+              <SquirrelMascot mood="encourage" size={46} />
+            </div>
+            <p className="text-sm font-semibold">Bắt đầu với nguồn tiền đầu tiên</p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-              Thêm ví tiền mặt, tài khoản ngân hàng hoặc ví điện tử của bạn và nhập số dư thực tế
-              (hoặc để 0 đ). FiGo không điền sẵn bất kỳ con số nào.
+              Thêm ví tiền mặt, tài khoản ngân hàng hoặc ví điện tử và nhập số dư thực tế (hoặc để 0
+              đ).
             </p>
-            <Button asChild className="mt-3">
+            <Button asChild className="mt-4">
               <Link to="/settings">
                 <Plus /> Thêm nguồn tiền
               </Link>
@@ -232,9 +248,9 @@ function Dashboard() {
           {accounts.map((account, i) => (
             <motion.div
               key={account.id}
-              initial={{ opacity: 0, x: 16 }}
+              initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: i * 0.04, duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
               className="shrink-0 snap-start"
             >
               <AccountCard account={account} balance={accountBalance(account, txs)} />
@@ -245,21 +261,21 @@ function Dashboard() {
 
       <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Summary
-          icon={<ArrowDownLeft />}
+          icon={<ArrowDownLeft className="size-[18px]" strokeWidth={1.5} />}
           label="Tổng thu"
           value={totals.income}
           tone="income"
           delay={0}
         />
         <Summary
-          icon={<ArrowUpRight />}
+          icon={<ArrowUpRight className="size-[18px]" strokeWidth={1.5} />}
           label="Tổng chi"
           value={totals.expense}
           tone="expense"
           delay={0.04}
         />
         <Summary
-          icon={<WalletCards />}
+          icon={<WalletCards className="size-[18px]" strokeWidth={1.5} />}
           label="Còn lại tháng này"
           value={totals.net}
           tone="primary"
@@ -271,41 +287,44 @@ function Dashboard() {
 
       <section className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <Panel>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between border-b border-border/70 pb-3">
             <div>
-              <h2 className="font-bold">Giao dịch gần đây</h2>
+              <h2 className="text-base font-semibold">Giao dịch gần đây</h2>
               <p className="text-xs text-muted-foreground tabular-nums">
                 {totals.count} giao dịch trong tháng
               </p>
             </div>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="text-xs">
               <Link to="/transactions">
                 Xem tất cả <ArrowRight />
               </Link>
             </Button>
           </div>
-          {recent.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              tx={tx}
-              account={accounts.find((a) => a.id === tx.accountId)?.name}
-              onClick={() => setDetail(tx)}
-            />
-          ))}
-          {recent.length === 0 && (
+          {recent.length > 0 ? (
+            <div className="divide-y divide-border/60">
+              {recent.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  account={accounts.find((a) => a.id === tx.accountId)?.name}
+                  onClick={() => setDetail(tx)}
+                />
+              ))}
+            </div>
+          ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Chưa có giao dịch nào. Bấm “Thêm chi” hoặc “Thêm thu” để bắt đầu.
+              Chưa có giao dịch nào. Chọn “Thêm chi” hoặc “Thêm thu” để bắt đầu.
             </p>
           )}
         </Panel>
         <Panel>
-          <div className="mb-4 flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-primary">
-              <Lightbulb className="size-[18px]" />
+          <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+            <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-muted/60 text-primary">
+              <Lightbulb className="size-[18px]" strokeWidth={1.5} />
             </span>
             <div>
-              <h2 className="font-bold">Góc nhìn tài chính</h2>
-              <p className="text-xs text-muted-foreground">Phân tích tự động từ dữ liệu của bạn</p>
+              <h2 className="text-base font-semibold">Góc nhìn tài chính</h2>
+              <p className="text-xs text-muted-foreground">Tổng hợp tự động từ sổ ghi nhận</p>
             </div>
           </div>
           <div className="space-y-2.5">
@@ -318,24 +337,24 @@ function Dashboard() {
                     : Lightbulb;
               const iconCls =
                 item.tone === "good"
-                  ? "text-income bg-income/12"
+                  ? "border-income/25 bg-accent text-income"
                   : item.tone === "warn"
-                    ? "text-amber-600 dark:text-amber-400 bg-warning/20"
-                    : "text-primary bg-accent";
+                    ? "border-amber-600/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                    : "border-border bg-muted text-primary";
               return (
                 <div
                   key={`${item.text}-${index}`}
-                  className="flex items-start gap-2.5 rounded-xl border border-border/50 bg-muted/50 p-3 text-sm leading-relaxed"
+                  className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/35 p-3 text-sm leading-relaxed"
                 >
                   <span
                     className={cn(
-                      "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-lg",
+                      "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border",
                       iconCls,
                     )}
                   >
-                    <Icon className="size-3.5" />
+                    <Icon className="size-3.5" strokeWidth={1.5} />
                   </span>
-                  <span className="min-w-0 flex-1">{item.text}</span>
+                  <span className="min-w-0 flex-1 text-[13px]">{item.text}</span>
                 </div>
               );
             })}
@@ -374,25 +393,30 @@ function Summary({
 }) {
   const toneClass =
     tone === "income"
-      ? "text-income bg-income/10"
+      ? "border-income/25 bg-accent text-income"
       : tone === "expense"
-        ? "text-expense bg-expense/10"
-        : "text-primary bg-primary/10";
+        ? "border-rose-500/20 bg-rose-500/10 text-expense"
+        : "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400";
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ delay, duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Panel className="flex items-center gap-3">
+      <Panel className="flex items-center gap-3.5 p-4 sm:p-5">
         <span
-          className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", toneClass)}
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-lg border",
+            toneClass,
+          )}
         >
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="truncate text-lg font-extrabold">
+          <p className="text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-0.5 truncate text-lg font-bold tabular-nums">
             <AnimatedVnd value={value} />
           </p>
         </div>

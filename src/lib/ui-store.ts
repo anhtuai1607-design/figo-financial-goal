@@ -45,12 +45,11 @@ export const useUI = create<UIState>((set) => ({
   closeTxSheet: () => set({ txSheetOpen: false, editingTx: null }),
 
   mascotEvent: null,
-  mascotCollapsed: false,
-  triggerMascot: ({ mood, message, subtext, durationMs = 5500 }) => {
+  mascotCollapsed: true,
+  triggerMascot: ({ mood, message, subtext, durationMs = 4500 }) => {
     const id = eventSeq++;
     const expiresAt = Date.now() + durationMs;
     set({
-      mascotCollapsed: false,
       mascotEvent: { id, mood, message, ...(subtext !== undefined ? { subtext } : {}), expiresAt },
     });
   },
